@@ -1,0 +1,21 @@
+{
+  "functions": [
+    "analyze_free_energy",
+    "calculate_free_energy",
+    "create_agent",
+    "create_grid_world_env",
+    "define_generative_model",
+    "get_agent",
+    "get_all_functions",
+    "get_environment",
+    "infer_policies",
+    "infer_states",
+    "infer_states_from_observation",
+    "plot_belief_dynamics",
+    "reset_environment",
+    "run_simulation",
+    "sample_action",
+    "step_environment",
+    "visualize_belief_dynamics"
+  ]
+}

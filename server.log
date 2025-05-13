@@ -1,0 +1,140 @@
+INFO:     Started server process [918752]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://localhost:8080 (Press CTRL+C to quit)
+INFO:     ::1:35892 - "GET /ping HTTP/1.1" 200 OK
+2025-05-12 12:14:46,812 - start_mcp_server - INFO - Tool invocation: create_agent, request_id: 1747077286.812211
+Traceback (most recent call last):
+  File "/home/trim/Documents/GitHub/mcp-pymdp/src/mcp/utils.py", line 77, in create_agent
+    agent = Agent(A=A, B=B, C=C, D=D)
+  File "/home/trim/Documents/GitHub/mcp-pymdp/pymdp-clone/pymdp/agent.py", line 107, in __init__
+    raise TypeError(
+TypeError: A matrix must be a numpy array
+Creating agent Agent with generative model
+INFO:     ::1:35892 - "POST /tools/create_agent HTTP/1.1" 200 OK
+2025-05-12 12:14:46,813 - start_mcp_server - INFO - Tool invocation: infer_states, request_id: 1747077286.8135417
+INFO:     ::1:35892 - "POST /tools/infer_states HTTP/1.1" 200 OK
+2025-05-12 12:14:46,814 - start_mcp_server - INFO - Tool invocation: create_gridworld_agent, request_id: 1747077286.8143759
+Traceback (most recent call last):
+  File "/home/trim/Documents/GitHub/mcp-pymdp/src/mcp/utils.py", line 77, in create_agent
+    agent = Agent(A=A, B=B, C=C, D=D)
+  File "/home/trim/Documents/GitHub/mcp-pymdp/pymdp-clone/pymdp/agent.py", line 107, in __init__
+    raise TypeError(
+TypeError: A matrix must be a numpy array
+Creating agent GridWorldAgent with generative model
+INFO:     ::1:35892 - "POST /tools/create_gridworld_agent HTTP/1.1" 200 OK
+2025-05-12 12:14:46,815 - start_mcp_server - INFO - Tool invocation: create_environment, request_id: 1747077286.8153172
+INFO:     ::1:35892 - "POST /tools/create_environment HTTP/1.1" 200 OK
+2025-05-12 12:14:46,816 - start_mcp_server - INFO - Tool invocation: run_simulation, request_id: 1747077286.816201
+INFO:     ::1:35892 - "POST /tools/run_simulation HTTP/1.1" 200 OK
+2025-05-12 12:14:46,816 - start_mcp_server - INFO - Tool invocation: infer_states_from_observation, request_id: 1747077286.8169096
+Traceback (most recent call last):
+  File "/home/trim/Documents/GitHub/mcp-pymdp/src/mcp/utils.py", line 1089, in infer_states_from_observation
+    likelihood = get_joint_likelihood(A, obs)
+TypeError: get_joint_likelihood() missing 1 required positional argument: 'num_states'
+INFO:     ::1:35892 - "POST /tools/infer_states_from_observation HTTP/1.1" 200 OK
+2025-05-12 12:14:46,817 - start_mcp_server - INFO - Tool invocation: calculate_free_energy, request_id: 1747077286.817628
+Traceback (most recent call last):
+  File "/home/trim/Documents/GitHub/mcp-pymdp/src/mcp/utils.py", line 1029, in calculate_free_energy
+    likelihood = get_joint_likelihood(A, obs)
+TypeError: get_joint_likelihood() missing 1 required positional argument: 'num_states'
+INFO:     ::1:35892 - "POST /tools/calculate_free_energy HTTP/1.1" 200 OK
+2025-05-12 12:14:47,334 - start_mcp_server - INFO - Tool invocation: create_gridworld_agent, request_id: 1747077287.3343048
+Traceback (most recent call last):
+  File "/home/trim/Documents/GitHub/mcp-pymdp/src/mcp/utils.py", line 77, in create_agent
+    agent = Agent(A=A, B=B, C=C, D=D)
+  File "/home/trim/Documents/GitHub/mcp-pymdp/pymdp-clone/pymdp/agent.py", line 107, in __init__
+    raise TypeError(
+TypeError: A matrix must be a numpy array
+Creating agent GridWorldAgent with generative model
+INFO:     ::1:35892 - "POST /tools/create_gridworld_agent HTTP/1.1" 200 OK
+2025-05-12 12:14:47,335 - start_mcp_server - INFO - Tool invocation: create_environment, request_id: 1747077287.3353376
+INFO:     ::1:35892 - "POST /tools/create_environment HTTP/1.1" 200 OK
+2025-05-12 12:14:47,336 - start_mcp_server - INFO - Tool invocation: reset_environment, request_id: 1747077287.3360868
+INFO:     ::1:35892 - "POST /tools/reset_environment HTTP/1.1" 200 OK
+2025-05-12 12:14:47,337 - start_mcp_server - INFO - Tool invocation: infer_states, request_id: 1747077287.3371737
+INFO:     ::1:35892 - "POST /tools/infer_states HTTP/1.1" 200 OK
+2025-05-12 12:14:47,339 - start_mcp_server - INFO - Tool invocation: infer_policies, request_id: 1747077287.3399463
+INFO:     ::1:35892 - "POST /tools/infer_policies HTTP/1.1" 200 OK
+2025-05-12 12:14:47,341 - start_mcp_server - INFO - Tool invocation: sample_action, request_id: 1747077287.340999
+INFO:     ::1:35892 - "POST /tools/sample_action HTTP/1.1" 200 OK
+2025-05-12 12:14:47,341 - start_mcp_server - INFO - Tool invocation: step_environment, request_id: 1747077287.341894
+INFO:     ::1:35892 - "POST /tools/step_environment HTTP/1.1" 200 OK
+2025-05-12 12:14:47,342 - start_mcp_server - INFO - Tool invocation: infer_states, request_id: 1747077287.3428154
+INFO:     ::1:35892 - "POST /tools/infer_states HTTP/1.1" 200 OK
+2025-05-12 12:14:47,343 - start_mcp_server - INFO - Tool invocation: infer_policies, request_id: 1747077287.343773
+INFO:     ::1:35892 - "POST /tools/infer_policies HTTP/1.1" 200 OK
+2025-05-12 12:14:47,344 - start_mcp_server - INFO - Tool invocation: sample_action, request_id: 1747077287.3448663
+INFO:     ::1:35892 - "POST /tools/sample_action HTTP/1.1" 200 OK
+2025-05-12 12:14:47,345 - start_mcp_server - INFO - Tool invocation: step_environment, request_id: 1747077287.3455958
+INFO:     ::1:35892 - "POST /tools/step_environment HTTP/1.1" 200 OK
+2025-05-12 12:14:47,346 - start_mcp_server - INFO - Tool invocation: infer_states, request_id: 1747077287.3462212
+INFO:     ::1:35892 - "POST /tools/infer_states HTTP/1.1" 200 OK
+2025-05-12 12:14:47,346 - start_mcp_server - INFO - Tool invocation: infer_policies, request_id: 1747077287.3469222
+INFO:     ::1:35892 - "POST /tools/infer_policies HTTP/1.1" 200 OK
+2025-05-12 12:14:47,347 - start_mcp_server - INFO - Tool invocation: sample_action, request_id: 1747077287.347765
+INFO:     ::1:35892 - "POST /tools/sample_action HTTP/1.1" 200 OK
+2025-05-12 12:14:47,348 - start_mcp_server - INFO - Tool invocation: step_environment, request_id: 1747077287.3483965
+INFO:     ::1:35892 - "POST /tools/step_environment HTTP/1.1" 200 OK
+2025-05-12 12:14:47,349 - start_mcp_server - INFO - Tool invocation: infer_states, request_id: 1747077287.3490283
+INFO:     ::1:35892 - "POST /tools/infer_states HTTP/1.1" 200 OK
+2025-05-12 12:14:47,349 - start_mcp_server - INFO - Tool invocation: infer_policies, request_id: 1747077287.3496308
+INFO:     ::1:35892 - "POST /tools/infer_policies HTTP/1.1" 200 OK
+2025-05-12 12:14:47,350 - start_mcp_server - INFO - Tool invocation: sample_action, request_id: 1747077287.3501627
+INFO:     ::1:35892 - "POST /tools/sample_action HTTP/1.1" 200 OK
+2025-05-12 12:14:47,350 - start_mcp_server - INFO - Tool invocation: step_environment, request_id: 1747077287.350683
+INFO:     ::1:35892 - "POST /tools/step_environment HTTP/1.1" 200 OK
+2025-05-12 12:14:47,351 - start_mcp_server - INFO - Tool invocation: infer_states, request_id: 1747077287.3512356
+INFO:     ::1:35892 - "POST /tools/infer_states HTTP/1.1" 200 OK
+2025-05-12 12:14:47,351 - start_mcp_server - INFO - Tool invocation: infer_policies, request_id: 1747077287.351776
+INFO:     ::1:35892 - "POST /tools/infer_policies HTTP/1.1" 200 OK
+2025-05-12 12:14:47,352 - start_mcp_server - INFO - Tool invocation: sample_action, request_id: 1747077287.3523018
+INFO:     ::1:35892 - "POST /tools/sample_action HTTP/1.1" 200 OK
+2025-05-12 12:14:47,352 - start_mcp_server - INFO - Tool invocation: step_environment, request_id: 1747077287.3528328
+INFO:     ::1:35892 - "POST /tools/step_environment HTTP/1.1" 200 OK
+2025-05-12 12:14:47,353 - start_mcp_server - INFO - Tool invocation: infer_states, request_id: 1747077287.353369
+INFO:     ::1:35892 - "POST /tools/infer_states HTTP/1.1" 200 OK
+2025-05-12 12:14:47,353 - start_mcp_server - INFO - Tool invocation: infer_policies, request_id: 1747077287.3539085
+INFO:     ::1:35892 - "POST /tools/infer_policies HTTP/1.1" 200 OK
+2025-05-12 12:14:47,354 - start_mcp_server - INFO - Tool invocation: sample_action, request_id: 1747077287.3544273
+INFO:     ::1:35892 - "POST /tools/sample_action HTTP/1.1" 200 OK
+2025-05-12 12:14:47,354 - start_mcp_server - INFO - Tool invocation: step_environment, request_id: 1747077287.354946
+INFO:     ::1:35892 - "POST /tools/step_environment HTTP/1.1" 200 OK
+2025-05-12 12:14:47,355 - start_mcp_server - INFO - Tool invocation: infer_states, request_id: 1747077287.355488
+INFO:     ::1:35892 - "POST /tools/infer_states HTTP/1.1" 200 OK
+2025-05-12 12:14:47,356 - start_mcp_server - INFO - Tool invocation: infer_policies, request_id: 1747077287.3560236
+INFO:     ::1:35892 - "POST /tools/infer_policies HTTP/1.1" 200 OK
+2025-05-12 12:14:47,356 - start_mcp_server - INFO - Tool invocation: sample_action, request_id: 1747077287.356582
+INFO:     ::1:35892 - "POST /tools/sample_action HTTP/1.1" 200 OK
+2025-05-12 12:14:47,357 - start_mcp_server - INFO - Tool invocation: step_environment, request_id: 1747077287.357118
+INFO:     ::1:35892 - "POST /tools/step_environment HTTP/1.1" 200 OK
+2025-05-12 12:14:47,357 - start_mcp_server - INFO - Tool invocation: infer_states, request_id: 1747077287.357679
+INFO:     ::1:35892 - "POST /tools/infer_states HTTP/1.1" 200 OK
+2025-05-12 12:14:47,358 - start_mcp_server - INFO - Tool invocation: infer_policies, request_id: 1747077287.358208
+INFO:     ::1:35892 - "POST /tools/infer_policies HTTP/1.1" 200 OK
+2025-05-12 12:14:47,358 - start_mcp_server - INFO - Tool invocation: sample_action, request_id: 1747077287.358735
+INFO:     ::1:35892 - "POST /tools/sample_action HTTP/1.1" 200 OK
+2025-05-12 12:14:47,359 - start_mcp_server - INFO - Tool invocation: step_environment, request_id: 1747077287.3592556
+INFO:     ::1:35892 - "POST /tools/step_environment HTTP/1.1" 200 OK
+2025-05-12 12:14:47,359 - start_mcp_server - INFO - Tool invocation: infer_states, request_id: 1747077287.3597956
+INFO:     ::1:35892 - "POST /tools/infer_states HTTP/1.1" 200 OK
+2025-05-12 12:14:47,360 - start_mcp_server - INFO - Tool invocation: infer_policies, request_id: 1747077287.3603246
+INFO:     ::1:35892 - "POST /tools/infer_policies HTTP/1.1" 200 OK
+2025-05-12 12:14:47,360 - start_mcp_server - INFO - Tool invocation: sample_action, request_id: 1747077287.3608582
+INFO:     ::1:35892 - "POST /tools/sample_action HTTP/1.1" 200 OK
+2025-05-12 12:14:47,361 - start_mcp_server - INFO - Tool invocation: step_environment, request_id: 1747077287.3613832
+INFO:     ::1:35892 - "POST /tools/step_environment HTTP/1.1" 200 OK
+2025-05-12 12:14:47,361 - start_mcp_server - INFO - Tool invocation: infer_states, request_id: 1747077287.3619354
+INFO:     ::1:35892 - "POST /tools/infer_states HTTP/1.1" 200 OK
+2025-05-12 12:14:47,362 - start_mcp_server - INFO - Tool invocation: infer_policies, request_id: 1747077287.3624878
+INFO:     ::1:35892 - "POST /tools/infer_policies HTTP/1.1" 200 OK
+2025-05-12 12:14:47,363 - start_mcp_server - INFO - Tool invocation: sample_action, request_id: 1747077287.3630245
+INFO:     ::1:35892 - "POST /tools/sample_action HTTP/1.1" 200 OK
+2025-05-12 12:14:47,363 - start_mcp_server - INFO - Tool invocation: step_environment, request_id: 1747077287.3635557
+INFO:     ::1:35892 - "POST /tools/step_environment HTTP/1.1" 200 OK
+2025-05-12 12:14:47,364 - start_mcp_server - INFO - Tool invocation: run_simulation, request_id: 1747077287.364338
+INFO:     ::1:35892 - "POST /tools/run_simulation HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [918752]

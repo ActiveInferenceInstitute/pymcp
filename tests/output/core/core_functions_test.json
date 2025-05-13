@@ -1,0 +1,12 @@
+{
+  "test_name": "core_directory_test",
+  "timestamp": 1747076193.0443532,
+  "description": "Test to ensure files are saved to core directory",
+  "core_functions": [
+    "create_agent",
+    "infer_states",
+    "infer_policies",
+    "sample_action",
+    "run_simulation"
+  ]
+}

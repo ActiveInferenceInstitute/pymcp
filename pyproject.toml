@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pymdp-mcp"
+version = "0.1.0"
+authors = [
+  { name="MCP-PyMDP Contributors", email="contact@example.com" },
+]
+description = "Message-based Cognitive Protocol for Active Inference with PyMDP"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "aiohttp>=3.8.1",
+    "numpy>=1.20.0",
+    "matplotlib>=3.5.0",
+    # Using local PyMDP clone instead of package
+    # "pymdp>=0.2.0",
+    "fastapi>=0.95.0",
+    "uvicorn>=0.22.0",
+    "pydantic>=1.10.7",
+    "python-multipart>=0.0.6",
+    "pillow>=9.0.0"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/yourusername/mcp-pymdp"
+"Bug Tracker" = "https://github.com/yourusername/mcp-pymdp/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mcp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning"
+]
+
+[tool.black]
+line-length = 88
+target-version = ['py38', 'py39', 'py310']
+include = '\.pyi?$'
+
+[tool.ruff]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+line-length = 88
+target-version = "py38"
+fix = true
+unfixable = ["F401"]
+
+[tool.ruff.isort]
+known-first-party = ["mcp"]
+known-third-party = ["pymdp", "numpy", "matplotlib", "aiohttp", "fastapi", "pydantic"]
