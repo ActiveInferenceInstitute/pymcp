@@ -1,0 +1,47 @@
+# AII sidecar — InstituteOS metadata. Schema: instituteos.platform.aii_sidecar
+meta:
+  updated: '2026-06-30'
+repo:
+  name: pymcp
+  slug: pymcp
+  full_name: ActiveInferenceInstitute/pymcp
+  description: PyMCP -- MCP for PyMDP
+institute:
+  category: research-software
+  steward: Active Inference Institute
+ecosystem:
+  links:
+    github: https://github.com/ActiveInferenceInstitute/pymcp
+    website: https://www.activeinference.org
+artifacts:
+- path: README.md
+  kind: doc
+  description: Repository overview.
+- path: src
+  kind: code
+  description: Source tree.
+- path: pyproject.toml
+  kind: code
+  description: Python package config.
+- path: LICENSE
+  kind: doc
+  description: License.
+provenance:
+  license: MIT
+  citation:
+    doi: 10.21105/joss.04098},
+instituteos:
+  tags:
+  - pymcp
+  - mcp
+  - pymdp
+  - python
+capabilities:
+- python-package
+- tested
+- documentation
+- containerized
+tasks:
+  test:
+    cmd: python -m pytest
+    description: Run the test suite.
