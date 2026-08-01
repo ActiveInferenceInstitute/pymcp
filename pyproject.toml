@@ -20,8 +20,7 @@ dependencies = [
     "aiohttp>=3.8.1",
     "numpy>=1.20.0",
     "matplotlib>=3.5.0",
-    # Using local PyMDP clone instead of package
-    # "pymdp>=0.2.0",
+    "inferactively-pymdp>=1.0.3",
     "fastapi>=0.95.0",
     "uvicorn>=0.22.0",
     "pydantic>=1.10.7",
@@ -30,8 +29,9 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/yourusername/mcp-pymdp"
-"Bug Tracker" = "https://github.com/yourusername/mcp-pymdp/issues"
+"Homepage" = "https://github.com/ActiveInferenceInstitute/pymcp"
+"Bug Tracker" = "https://github.com/ActiveInferenceInstitute/pymcp/issues"
+"Repository" = "https://github.com/ActiveInferenceInstitute/pymcp"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mcp"]

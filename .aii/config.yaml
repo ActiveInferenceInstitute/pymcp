@@ -35,7 +35,7 @@ artifacts:
 provenance:
   license: MIT
   citation:
-    doi: 10.21105/joss.04098},
+    doi: 10.21105/joss.04098
 instituteos:
   tags:
   - pymcp

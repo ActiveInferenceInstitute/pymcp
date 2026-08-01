@@ -1,342 +1,110 @@
-# Advanced PyMDP Features via MCP
+# Advanced Features
 
-This guide covers advanced PyMDP features available through the MCP server, demonstrating how the integration provides full access to PyMDP's capabilities.
+This guide covers the non-core capabilities that **actually exist** in the
+codebase. Earlier written material claimed features such as JAX acceleration
+(`enable_jax`, `jax_infer_states`), temporal deep active inference
+(`set_temporal_horizon`, `deep_planning`), information-theoretic metrics
+(`calculate_kl_divergence`, `calculate_entropy`), learning tools (`enable_learning`,
+`update_model`), and complex multi-agent scenarios (`create_simulation`,
+`analyze_simulation`, `register_environment`, `connect_agent_to_environment`).
+**None of these are implemented.** This repository does not wrap PyMDP's
+experimental JAX backend or its learning/example modules. What follows is the
+accurate set of advanced functionality.
 
-## Custom Inference Methods
+## Gridworld agents and environments
 
-PyMDP provides multiple inference algorithms for different use cases. The MCP server exposes all of these options through the appropriate parameters:
+Beyond raw `Agent` objects, the interface ships purpose-built gridworld support:
 
-```python
-# Using variational message passing for inference
-mcp.call("pymdp", "infer_states", {
-    "agent_name": "my_agent",
-    "observation": [0, 2],
-    "method": "VMP",
-    "num_iter": 10,
-    "dF": 0.001
-})
+- `create_gridworld_agent` builds an agent whose observation model combines a
+  position observation (identity over grid cells) and a reward observation, with
+  prior preferences biased toward reward cells.
+- `create_grid_world_env` builds a navigable gridworld environment with reward
+  locations.
 
-# Using marginal message passing for inference
-mcp.call("pymdp", "infer_states", {
-    "agent_name": "my_agent",
-    "observation": [0, 2],
-    "method": "MMP",
-    "num_iter": 10,
-    "dF": 0.001
-})
+These compose with `run_simulation` to produce a navigable foraging-style loop.
+
+## Environments module
+
+The `src/mcp/environments/` package provides reusable environment helpers
+(`GridWorldEnvironment`, `CustomEnvironment`, and `create_*` factory functions)
+used by the interface and available programmatically via the `mcp` package.
+
+## Visualization and analysis
+
+The `src/mcp/visualization/` package, wired into the interface by
+`visualization/extensions.py`, adds visualization methods to `PyMDPInterface`:
+
+- **Belief dynamics** — `visualize_belief_dynamics(session_id, output_file)` and
+  `plot_belief_dynamics(session_id, output_file)` render heatmaps of how an
+  agent's beliefs evolve over a simulation, with a panel per state factor.
+- **Free-energy analysis** — `analyze_free_energy(session_id, output_file)`
+  produces plots and metrics of the agent's free-energy-minimization process.
+- **Generative-model / simulation visualization** — helpers in
+  `visualization/generative_model.py`, `visualization/simulation.py`, and
+  `visualization/free_energy.py`.
+
+These are exercised in the test suite, which writes sample plots under
+`tests/output/`.
+
+## Free-energy calculation
+
+`calculate_free_energy(A_matrix, prior, observation, q_states)` and
+`infer_states_from_observation(A_matrix, prior, observation)` are standalone
+analysis helpers built on `pymdp.maths.get_joint_likelihood`. They let you probe
+free-energy components (energy, entropy, divergence, accuracy) without running a
+full agent loop.
+
+## Sessions
+
+The FastAPI server (`src/mcp/server/app.py`) maintains persistent **sessions**
+that bind an agent to an environment. You create a session, run it for `N`
+steps, and query/visualize the accumulated history:
+
+```bash
+# create a session
+POST /sessions            {"agent_id": "...", "env_id": "..."}
+# run it
+POST /sessions/{id}/run   {"steps": 10}
+# inspect / visualize
+GET  /sessions
+GET  /sessions/{id}/visualize?format=png|svg|json
+GET  /analyze/free_energy/{id}
+GET  /analyze/beliefs/{id}
 ```
 
-## Information-Theoretic Metrics
+Sessions keep simulation history in `PyMDPInterface.sessions` so state persists
+across calls.
 
-PyMDP calculates various information-theoretic measures that are useful for analyzing agent behavior. These are accessible through MCP tools:
+## Clients
 
-```python
-# Calculate the Kullback-Leibler divergence between beliefs
-kl_div = mcp.call("pymdp", "calculate_kl_divergence", {
-    "agent_name": "my_agent",
-    "beliefs_q": prior_beliefs,
-    "beliefs_p": posterior_beliefs
-})
+`src/mcp/client.py` (with `src/mcp/client/`) provides two ways to talk to the
+servers:
 
-# Calculate entropy of beliefs
-entropy = mcp.call("pymdp", "calculate_entropy", {
-    "agent_name": "my_agent",
-    "beliefs": agent_beliefs
-})
-```
+- **`MCPClient`** — network client that talks to a running FastAPI/HTTP server
+  over aiohttp (`ping`, `get_tools`, `call_tool`).
+- **`DirectMCPClient`** — calls the MCP tools in `src/main.py` in-process with no
+  server, useful for testing and development.
 
-## Temporal Deep Active Inference
+There is also an `MCPToolKit` (`src/mcp/client/tools.py`) that wraps common
+workflows as higher-level convenience calls.
 
-The MCP server supports PyMDP's implementation of temporal deep active inference, where agents can plan over multiple time steps:
+## Configuration
 
-```python
-# Set up a temporal horizon for planning
-mcp.call("pymdp", "set_temporal_horizon", {
-    "agent_name": "my_agent",
-    "horizon": 5
-})
+Server behavior is controlled by environment variables:
 
-# Perform deep planning
-planning_results = mcp.call("pymdp", "deep_planning", {
-    "agent_name": "my_agent",
-    "current_observation": [0, 1]
-})
-```
+| Variable | Default | Description |
+| --- | --- | --- |
+| `HOST` | `0.0.0.0` | Host to bind (MCP SSE server). |
+| `PORT` | `8050` | Port to listen on (MCP SSE server). |
+| `TRANSPORT` | `sse` | MCP transport: `sse` or `stdio`. |
 
-## Custom Environment Integration
+The FastAPI app (`mcp.server.app:app`) is served with uvicorn and listens on the
+bind host/port you pass to uvicorn.
 
-The MCP server can connect PyMDP agents to custom environments:
+## What is intentionally out of scope
 
-```python
-# Register a custom environment
-mcp.call("pymdp", "register_environment", {
-    "env_name": "my_custom_env",
-    "observation_space": [3, 4],
-    "action_space": [2, 2]
-})
-
-# Connect an agent to the environment
-mcp.call("pymdp", "connect_agent_to_environment", {
-    "agent_name": "my_agent",
-    "env_name": "my_custom_env"
-})
-```
-
-## Learning of Generative Models
-
-PyMDP supports learning of generative models through Bayesian inference. The MCP server exposes these capabilities:
-
-```python
-# Enable learning of the A matrix
-mcp.call("pymdp", "enable_learning", {
-    "agent_name": "my_agent",
-    "parameter": "A",
-    "learning_rate": 0.1
-})
-
-# Update generative model based on experience
-mcp.call("pymdp", "update_model", {
-    "agent_name": "my_agent",
-    "observation": [1, 0],
-    "action": [0, 1]
-})
-```
-
-## Complex Simulation Scenarios
-
-The MCP server supports setting up and running complex PyMDP simulations:
-
-```python
-# Set up a multi-agent simulation
-simulation_id = mcp.call("pymdp", "create_simulation", {
-    "agent_names": ["agent1", "agent2"],
-    "environment": "social_env",
-    "duration": 100
-})
-
-# Run simulation
-results = mcp.call("pymdp", "run_simulation", {
-    "simulation_id": simulation_id
-})
-
-# Analyze results
-analysis = mcp.call("pymdp", "analyze_simulation", {
-    "simulation_id": simulation_id,
-    "metrics": ["free_energy", "accuracy", "complexity"]
-})
-```
-
-## JAX Acceleration
-
-PyMDP includes experimental JAX support for accelerated computation. The MCP server provides access to these features:
-
-```python
-# Enable JAX acceleration for an agent
-mcp.call("pymdp", "enable_jax", {
-    "agent_name": "my_agent"
-})
-
-# Run accelerated inference
-results = mcp.call("pymdp", "jax_infer_states", {
-    "agent_name": "my_agent",
-    "observation": [0, 2]
-})
-```
-
-## Integration with PyMDP Examples
-
-The MCP server includes all standard PyMDP examples, accessible through dedicated tools:
-
-```python
-# Run the T-maze example
-tmaze_results = mcp.call("pymdp", "run_tmaze_example", {
-    "reward_location": "left",
-    "agent_type": "sophisticated"
-})
-
-# Run the agent learning example
-learning_results = mcp.call("pymdp", "run_learning_example", {
-    "learning_rate": 0.1,
-    "num_trials": 50
-})
-```
-
-These examples match the functionality available in the PyMDP repository examples directory, providing identical results.
-
-# Advanced PyMDP-MCP Features
-
-This document covers the advanced features available in the PyMDP-MCP integration, based on the actual implementation in the source code.
-
-## Belief Dynamics Visualization
-
-The implementation includes specialized visualization tools for tracking belief dynamics over time:
-
-```python
-# Visualize belief dynamics for a session
-result = await client.call_tool("visualize_belief_dynamics", {
-    "session_id": "session_1234",
-    "output_file": "beliefs.png"
-})
-```
-
-This generates a detailed heatmap visualization showing how agent beliefs evolved during a simulation, with separate plots for each state factor.
-
-## Free Energy Analysis
-
-Advanced analysis of free energy components is available through dedicated visualization tools:
-
-```python
-# Analyze free energy components from a simulation
-result = await client.call_tool("analyze_free_energy", {
-    "session_id": "session_1234",
-    "output_file": "free_energy.png"
-})
-```
-
-This produces both visualizations and detailed metrics about the agent's free energy minimization process.
-
-## State Inference Methods
-
-Multiple state inference algorithms are supported, with the ability to configure detailed parameters:
-
-```python
-# Infer states using various methods
-result = await client.call_tool("infer_states", {
-    "agent_name": "agent_1",
-    "observation": [0, 2],
-    "method": "FPI",  # Options: FPI, VMP, MMP, BP
-    "num_iter": 10,
-    "dF": 0.001
-})
-```
-
-## Session Management
-
-The implementation includes a comprehensive session management system for maintaining state across multiple interactions:
-
-```python
-# Run a simulation with session tracking
-result = await client.call_tool("run_simulation", {
-    "agent_id": "agent_1",
-    "env_id": "env_1",
-    "num_timesteps": 10,
-    "save_history": true
-})
-
-# Session ID is returned for future reference
-session_id = result["session_id"]
-
-# Use session ID to query results later
-beliefs = await client.call_tool("get_belief_history", {
-    "session_id": session_id
-})
-```
-
-## Custom Environment Creation
-
-The implementation supports creating customized environments beyond the standard grid world:
-
-```python
-# Create a custom environment
-result = await client.call_tool("create_custom_env", {
-    "name": "custom_1",
-    "observation_space": [3, 5],
-    "action_space": [4],
-    "initial_state": [0, 2],
-    "transition_dynamics": "custom_dynamics_json"
-})
-```
-
-## Direct vs. Network Client
-
-The implementation provides both direct and network-based client implementations:
-
-```python
-# Direct client for local operation
-direct_client = DirectMCPClient(output_dir="./output")
-result = await direct_client.call_tool("create_agent", 
-    name="direct_agent",
-    generative_model={"A": [...], "B": [...]}
-)
-
-# Network client for remote operation
-network_client = MCPClient(host="remote-server", port=8080)
-result = await network_client.call_tool("create_agent", 
-    name="remote_agent",
-    generative_model={"A": [...], "B": [...]}
-)
-```
-
-## Computation Logging
-
-Detailed logging of computational processes is available:
-
-```python
-# Enable detailed computation logging
-result = await client.call_tool("set_debug_mode", {
-    "enabled": true
-})
-
-# Run inference with detailed logging
-result = await client.call_tool("infer_states", {
-    "agent_name": "agent_1",
-    "observation": [0, 1],
-    "save_computation": true
-})
-
-# Retrieve computation details
-logs = await client.call_tool("get_computation_logs", {
-    "agent_name": "agent_1"
-})
-```
-
-## Output Directory Management
-
-The implementation includes automatic creation and management of timestamped output directories:
-
-```python
-# Client automatically creates a timestamped output directory
-client = MCPClient(output_dir="auto")
-
-# Directory path follows a standardized format
-# Example: scripts/output/pymcp_examples_YYYYMMDD_HHMMSS/
-```
-
-All visualizations, logs, and data are saved to these directories with appropriate timestamps.
-
-## Free Energy Calculation
-
-Direct calculation of free energy components is available for advanced analysis:
-
-```python
-# Calculate free energy with decomposition into components
-result = await client.call_tool("calculate_free_energy", {
-    "A_matrix": A_matrix_list,
-    "prior": prior_belief_list,
-    "observation": [1, 0, 2],
-    "q_states": posterior_list
-})
-
-# Returns accuracy and complexity terms separately
-accuracy = result["accuracy"]
-complexity = result["complexity"]
-free_energy = result["free_energy"]
-```
-
-## Asynchronous Operation
-
-The implementation is fully asynchronous, supporting concurrent operations:
-
-```python
-# Run multiple operations concurrently
-import asyncio
-
-async def run_concurrent_operations():
-    tasks = [
-        client.call_tool("infer_states", {"agent_name": "agent_1", "observation": [0, 1]}),
-        client.call_tool("infer_states", {"agent_name": "agent_2", "observation": [2, 0]}),
-        client.call_tool("step_environment", {"env_name": "env_1", "action": [1]})
-    ]
-    results = await asyncio.gather(*tasks)
-    return results
-``` 
+This project is a focused wrapper around PyMDP's **discrete-state-space
+inference**, **policy optimization**, and **action sampling**. It does not
+re-implement or expose PyMDP's experimental JAX acceleration, its standalone
+example/learning scripts, or custom information-theoretic utilities beyond the
+free-energy helpers listed above. If you need those, use PyMDP directly.

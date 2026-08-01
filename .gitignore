@@ -1,2 +1,9 @@
 __pycache__/
 *.pyc
+.venv/
+*.egg-info/
+tests/output/
+server.log
+.DS_Store
+.mcp/
+.mcp.json

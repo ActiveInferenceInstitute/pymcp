@@ -1,79 +1,71 @@
 # PyMDP Integration
 
-## About the `pymdp-clone` Directory
+## How this project uses PyMDP
 
-The `pymdp-clone` directory contains a complete clone of the [PyMDP GitHub repository](https://github.com/infer-actively/pymdp). This is **not** a mock or simplified version - it is the full, unmodified PyMDP library that provides all functionality for active inference in discrete state spaces.
-
-## Why Include the Full PyMDP Codebase?
-
-Including the complete PyMDP codebase serves several important purposes:
-
-1. **Direct Integration**: The MCP server calls PyMDP functions directly, without any abstraction layers that might introduce differences in behavior.
-
-2. **Complete Feature Support**: By including the entire PyMDP library, the MCP server supports all features of PyMDP, including the most advanced and experimental features.
-
-3. **Consistency with Original Implementation**: Users familiar with PyMDP can be confident that the MCP server will produce identical results to using PyMDP directly.
-
-4. **Access to Examples**: The PyMDP examples directory contains valuable reference implementations that the MCP server makes available through dedicated tools.
-
-## How the MCP Server Uses PyMDP
-
-The MCP server interacts with the PyMDP library in the following ways:
-
-1. **Direct Imports**: The server imports PyMDP classes and functions directly from the pymdp-clone directory.
-
-2. **Unmodified API Calls**: All calls to PyMDP functions use the original API without modification.
-
-3. **Data Structure Compatibility**: The server maintains compatibility with PyMDP's data structures, using the same object arrays and NumPy arrays.
-
-## Key PyMDP Components Used
-
-The MCP server uses several key components from PyMDP:
-
-### Agent Class
-
-The PyMDP `Agent` class is the core component used by the MCP server. It provides the main interface for creating active inference agents, defining generative models, and performing inference and planning.
+This project integrates the **official PyMDP library** as an ordinary pip
+dependency (`inferactively-pymdp`). There is **no vendored `pymdp-clone`
+directory** in this repository and no modified copy of PyMDP. The code imports
+PyMDP directly through its public API:
 
 ```python
-from pymdp.agent import Agent
-
-# The MCP server creates PyMDP Agent instances directly
-agent = Agent(A=A, B=B, C=C, D=D)
+from pymdp.agent import Agent        # src/mcp/utils.py
+from pymdp.envs import Env
+import pymdp.utils as utils
+from pymdp.maths import get_joint_likelihood
 ```
 
-### Inference Algorithms
+## Why install PyMDP separately
 
-The MCP server uses PyMDP's inference algorithms:
+`pymdp` is intentionally **not** pinned as a dependency in `pyproject.toml`, so
+you must install it alongside this package:
+
+```bash
+uv pip install inferactively-pymdp
+```
+
+This keeps pymcp usable against whatever PyMDP version you already have in your
+environment, and avoids resolving/conflicting PyMDP versions.
+
+## Key PyMDP components used
+
+### Agent class
+
+The core of the integration. `PyMDPInterface.create_agent` constructs a PyMDP
+`Agent` from JSON-decoded `A`, `B`, `C`, `D` matrices, normalizing them into the
+object arrays PyMDP expects, and stores the instance for later inference.
 
 ```python
-from pymdp.algos import inference
-
-# The MCP server uses PyMDP's inference functions directly
-qs = inference.update_posterior_states(
-    A, B, C, D, 
-    observation, 
-    method=inference_method
-)
+agent = Agent(A=A_obj, B=B_obj, C=C_obj, D=D_obj)
+agent.infer_states(observation)
+agent.infer_policies()
+agent.sample_action()
 ```
 
-### Utility Functions
+### Environments
 
-The MCP server uses PyMDP's utility functions for array manipulation, distribution operations, and information-theoretic calculations:
+`create_grid_world_env` builds environments compatible with PyMDP's
+`Env`-style step/reset interface, storing them in `PyMDPInterface.environments`.
 
-```python
-from pymdp.utils import random_A_matrix, random_B_matrix
-from pymdp.maths import spm_log, softmax
+### Maths and utils
 
-# The MCP server uses PyMDP's utility functions directly
-A = random_A_matrix(num_obs, num_states)
-```
+`PyMDPInterface.calculate_free_energy` and
+`infer_states_from_observation` use `pymdp.maths.get_joint_likelihood`;
+agent creation reuses normalizing helpers from `pymdp.utils`.
 
-## Versioning and Updates
+## Data structure compatibility
 
-The MCP server is kept in sync with the latest stable version of PyMDP. When PyMDP is updated, the pymdp-clone directory is updated accordingly to ensure that the MCP server always provides access to the most current features and bug fixes.
+PyMDP uses NumPy **object arrays** for its `A`/`B`/`C`/`D` matrices (one array
+entry per observation modality / state factor). The interface converts between
+these and plain JSON lists via `_convert_to_obj_array`, `_convert_from_obj_array`,
+`_ensure_native_types`, and the `NumpyEncoder` used by the servers. This keeps
+every MCP/HTTP tool JSON-in/JSON-out while remaining faithful to PyMDP's internal
+representation.
 
-## Verification of Integration
+## Verification
 
-To verify that the MCP server correctly integrates with PyMDP, comprehensive tests compare the results of operations performed through the MCP server with the results of the same operations performed directly using PyMDP.
-
-These tests ensure that the MCP server faithfully reproduces PyMDP's behavior and provides users with a reliable interface to active inference functionality. 
+The test suite (under `tests/`, run with `pytest`) exercises the interface
+directly and through the MCP layer, and confirms the wrapper reproduces the
+results of direct PyMDP calls — so the integration is a thin, behavior-preserving
+layer rather than a re-implementation. See the root
+[`README.md`](../README.md) and [implementation_details.md](implementation_details.md)
+for more.

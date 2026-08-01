@@ -11,13 +11,10 @@ matplotlib.use('Agg')  # Use non-interactive Agg backend for testing
 # Setting up paths and directories
 test_dir = os.path.dirname(os.path.abspath(__file__))
 src_dir = os.path.join(os.path.dirname(test_dir), 'src')
-pymdp_dir = os.path.join(os.path.dirname(test_dir), 'pymdp-clone')
 
 # Add source and PyMDP directories to path
 if src_dir not in sys.path:
     sys.path.insert(0, src_dir)
-if pymdp_dir not in sys.path:
-    sys.path.insert(0, pymdp_dir)
 
 # Import PyMDPInterface from utils.py
 from mcp.utils import PyMDPInterface
@@ -219,33 +216,26 @@ class TestAdditionalFunctions(unittest.TestCase):
             [1.0, 0.0]  # Strong preference for first observation
         ]
         
-        self.pymdp_interface.create_agent("temporal_planning_test", {"A": A, "B": B, "C": C})
-        
-        # Get the agent and set temporal horizon to 3
-        agent = self.pymdp_interface.agents["temporal_planning_test"]
-        agent.temporal_horizon = 3
-        
+        self.pymdp_interface.create_agent("temporal_planning_test", {"A": A, "B": B, "C": C, "policy_len": 3})
+
+        # In the current (immutable, equinox) PyMDP the planning horizon is a
+        # construction-time `policy_len`; it can no longer be assigned post-hoc.
+        # policy_len=3 with 2 actions yields 2**3 = 8 policies.
+
         # Infer states
         self.pymdp_interface.infer_states("temporal_planning_test", [1])
-        
+
         # Infer policies with longer horizon
         result = self.pymdp_interface.infer_policies("temporal_planning_test")
-        
+
         # Check result structure
         self.assertTrue("policy_posterior" in result)
         self.assertTrue("expected_free_energy" in result)
-        
-        # Check if we got a valid policy posterior
-        # For some configurations, the PyMDP library might return empty policies
-        if len(result["policy_posterior"]) == 0:
-            print("Warning: PyMDP returned empty policy distribution. This is likely due to the specific model configuration.")
-            # Don't fail the test if the PyMDP library gave us an empty policy list
-            # This can happen with certain model configurations
-        else:
-            # If we do have policies, there should be more than one with temporal horizon 3
-            self.assertTrue(len(result["policy_posterior"]) > 1, 
-                          f"Expected multiple policies with temporal horizon 3, got {len(result['policy_posterior'])}")
-        
+
+        # With policy_len=3 there should be multiple (8) policies.
+        self.assertGreater(len(result["policy_posterior"]), 1,
+                           f"Expected multiple policies with policy_len 3, got {len(result['policy_posterior'])}")
+
         # Save result to output directory
         with open(os.path.join(GEN_MODEL_DIR, "temporal_planning_test.json"), "w") as f:
             json.dump(result, f, indent=2)
@@ -263,79 +253,36 @@ class TestAdditionalFunctions(unittest.TestCase):
             [1.0, 0.0]  # Preference for first observation
         ]
         
-        self.pymdp_interface.create_agent("learning_test", {"A": A, "B": B, "C": C})
-        
-        # Get the agent and configure it for learning
+        # In the current (immutable, equinox) PyMDP, learning parameters are
+        # configured at construction time and cannot be mutated post-hoc. This
+        # test verifies that the interface passes that configuration through.
+        pA = [np.ones((2, 2))]  # Dirichlet concentration over A (batch dim added by interface)
+        pB = [np.ones((2, 2, 2))]  # Dirichlet concentration over B (batch dim added by interface)
+        self.pymdp_interface.create_agent("learning_test", {
+            "A": A, "B": B, "C": C,
+            "learn_A": True, "learn_B": True,
+            "pA": pA, "pB": pB,
+        })
+
         agent = self.pymdp_interface.agents["learning_test"]
-        
-        # Properly initialize learning parameters as required by PyMDP
-        # We need to create Dirichlet concentration parameters with the same shape as A and B
-        A_shape = agent.A[0].shape
-        B_shape = agent.B[0].shape
-        
-        # Initialize pA (Dirichlet parameters for A)
-        pA = utils.obj_array(1)
-        pA[0] = np.ones(A_shape) * 1.0  # Shape must match A
-        agent.pA = pA
-        
-        # Initialize pB (Dirichlet parameters for B)
-        pB = utils.obj_array(1)
-        pB[0] = np.ones(B_shape) * 1.0  # Shape must match B
-        agent.pB = pB
-        
-        # Set which factors to learn
-        agent.A_factor_list = [0]  # Learn the mapping from first state factor to observation
-        agent.B_factor_list = [0]  # Learn the transition dynamics of first state factor
-        
-        # Store original matrices for comparison
-        original_A = self.pymdp_interface._convert_from_obj_array(agent.A)
-        original_B = self.pymdp_interface._convert_from_obj_array(agent.B)
-        
-        # Skip the actual learning process as it requires proper initialization
-        # of agent beliefs which is challenging to set up in tests
-        # Instead, directly modify the agent's A and B matrices to simulate learning
-        
-        # Manually adjust A matrix to simulate learning
-        agent.A[0][0, 0] = 0.95  # Increase probability of first observation given first state
-        agent.A[0][0, 1] = 0.05  # Decrease probability of first observation given second state
-        
-        # Manually adjust B matrix to simulate learning
-        agent.B[0][0, 0, 0] = 0.95  # Increase probability of first state transition
-        
-        # Get updated matrices
-        updated_A = self.pymdp_interface._convert_from_obj_array(agent.A)
-        updated_B = self.pymdp_interface._convert_from_obj_array(agent.B)
-        
-        # Check that matrices have changed due to learning
-        A_changed = False
-        B_changed = False
-        
-        # Check if A matrix changed
-        for i in range(len(original_A[0])):
-            for j in range(len(original_A[0][i])):
-                if abs(original_A[0][i][j] - updated_A[0][i][j]) > 1e-6:
-                    A_changed = True
-                    break
-        
-        # Check if B matrix changed
-        for i in range(len(original_B[0])):
-            for j in range(len(original_B[0][i])):
-                for k in range(len(original_B[0][i][j])):
-                    if abs(original_B[0][i][j][k] - updated_B[0][i][j][k]) > 1e-6:
-                        B_changed = True
-                        break
-        
-        # At least one of the matrices should have changed
-        self.assertTrue(A_changed or B_changed, "Learning should have updated at least one matrix")
-        
+
+        # Verify the learning configuration was honoured at construction.
+        self.assertTrue(agent.learn_A, "learn_A should be enabled")
+        self.assertTrue(agent.learn_B, "learn_B should be enabled")
+        self.assertIsNotNone(agent.pA, "pA concentration should be set")
+        self.assertIsNotNone(agent.pB, "pB concentration should be set")
+
+        # The agent remains a valid model and can still perform inference.
+        result = self.pymdp_interface.infer_states("learning_test", [0])
+        self.assertTrue("posterior_states" in result)
+        self.assertAlmostEqual(sum(result["posterior_states"][0]), 1.0, places=6)
+
         # Save learning results
         learning_results = {
-            "original_A": original_A,
-            "updated_A": updated_A,
-            "original_B": original_B,
-            "updated_B": updated_B,
-            "A_changed": A_changed,
-            "B_changed": B_changed
+            "learn_A": bool(agent.learn_A),
+            "learn_B": bool(agent.learn_B),
+            "num_observation_modalities": len(agent.A),
+            "num_state_factors": len(agent.B),
         }
         
         with open(os.path.join(GEN_MODEL_DIR, "learning_test.json"), "w") as f:

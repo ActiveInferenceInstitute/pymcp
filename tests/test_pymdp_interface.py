@@ -26,10 +26,6 @@ src_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 if src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
-# Add the pymdp-clone directory to path to ensure we're using the real PyMDP library
-pymdp_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'pymdp-clone')
-if pymdp_dir not in sys.path:
-    sys.path.insert(0, pymdp_dir)
 
 # Import directly from the utils module
 from mcp.utils import PyMDPInterface, NumpyEncoder
@@ -221,8 +217,10 @@ class TestPyMDPInterface(unittest.TestCase):
         
         # Verify that inference matches direct PyMDP inference
         agent = self.pymdp_interface.agents["infer_test"]
-        direct_qs = agent.infer_states([0])
-        direct_posterior = [q.tolist() for q in direct_qs]
+        prior = self.pymdp_interface.priors["infer_test"]
+        o_vec = self.pymdp_interface._onehot_observations(agent, [0])
+        direct_qs = agent.infer_states(o_vec, prior)
+        direct_posterior = [self.pymdp_interface._unwrap(q) for q in direct_qs]
         
         # Results should be identical
         for i in range(len(direct_posterior)):
@@ -789,27 +787,28 @@ class TestPyMDPInterface(unittest.TestCase):
         self.pymdp_interface.create_agent("validation_agent", {"A": A, "B": B, "C": C})
         interface_agent = self.pymdp_interface.agents["validation_agent"]
         
-        # Directly with PyMDP
-        # Convert lists to numpy arrays first
-        A_np_list = [np.array(a) for a in A]
-        B_np_list = [np.array(b) for b in B]
-        C_np_list = [np.array(c) for c in C]
-        
-        # Properly normalize B matrices (required by PyMDP)
-        for i in range(len(B_np_list)):
-            B_factor = B_np_list[i]
-            for c in range(B_factor.shape[-1]):  # For each control state
-                for s in range(B_factor.shape[1]):  # For each state being transitioned from
-                    # Normalize over states to transition to (axis 0)
-                    if np.sum(B_factor[:, s, c]) > 0:
-                        B_factor[:, s, c] = B_factor[:, s, c] / np.sum(B_factor[:, s, c])
-        
-        # Then convert to object arrays
-        A_np = pymdp.utils.obj_array_from_list(A_np_list)
-        B_np = pymdp.utils.obj_array_from_list(B_np_list)
-        C_np = pymdp.utils.obj_array_from_list(C_np_list)
-        
-        direct_agent = pymdp.agent.Agent(A=A_np, B=B_np, C=C_np)
+        # Directly with PyMDP (current batched API, mirroring the interface)
+        import numpy as _np
+        A_np_list = [_np.asarray(a, dtype=float) for a in A]
+        B_np_list = []
+        for bmat in B:
+            b = _np.asarray(bmat, dtype=float)
+            for s in range(b.shape[-2]):
+                for c in range(b.shape[-1]):
+                    colsum = b[:, s, c].sum()
+                    if colsum > 0:
+                        b[:, s, c] = b[:, s, c] / colsum
+            B_np_list.append(b)
+        C_np_list = [_np.asarray(c, dtype=float) for c in C]
+
+        # Batched arrays (leading batch dimension of 1) + uniform prior.
+        A_b = [a[None] for a in A_np_list]
+        B_b = [b[None] for b in B_np_list]
+        C_b = [c[None] for c in C_np_list]
+        D_b = [_np.ones((1, b.shape[0])) / b.shape[0] for b in B_np_list]
+
+        direct_agent = pymdp.agent.Agent(A=A_b, B=B_b, C=C_b, D=D_b,
+                                         policy_len=1, num_controls=[2], control_fac_idx=[0])
         
         # 2. Test inference with both agents
         observation = [0]
@@ -819,8 +818,9 @@ class TestPyMDPInterface(unittest.TestCase):
         interface_posterior = interface_result["posterior_states"]
         
         # Directly with PyMDP
-        direct_qs = direct_agent.infer_states(observation)
-        direct_posterior = [q.tolist() for q in direct_qs]
+        o_vec = self.pymdp_interface._onehot_observations(direct_agent, observation)
+        direct_qs = direct_agent.infer_states(o_vec, D_b)
+        direct_posterior = [self.pymdp_interface._unwrap(q) for q in direct_qs]
         
         # Compare results
         self.assertEqual(len(interface_posterior), len(direct_posterior))
@@ -837,16 +837,18 @@ class TestPyMDPInterface(unittest.TestCase):
         interface_efe = interface_policy_result["expected_free_energy"]
         
         # Directly with PyMDP
-        direct_q_pi, direct_efe = direct_agent.infer_policies()
-        
+        direct_q_pi, direct_efe = direct_agent.infer_policies(direct_qs)
+        direct_q_pi_unwrapped = self.pymdp_interface._unwrap(direct_q_pi)
+        direct_efe_unwrapped = self.pymdp_interface._unwrap(direct_efe)
+
         # Compare results
-        self.assertEqual(len(interface_policy), len(direct_q_pi))
+        self.assertEqual(len(interface_policy), len(direct_q_pi_unwrapped))
         for i in range(len(interface_policy)):
-            self.assertAlmostEqual(interface_policy[i], direct_q_pi[i], places=6)
+            self.assertAlmostEqual(interface_policy[i], direct_q_pi_unwrapped[i], places=6)
         
-        self.assertEqual(len(interface_efe), len(direct_efe))
+        self.assertEqual(len(interface_efe), len(direct_efe_unwrapped))
         for i in range(len(interface_efe)):
-            self.assertAlmostEqual(interface_efe[i], direct_efe[i], places=6)
+            self.assertAlmostEqual(interface_efe[i], direct_efe_unwrapped[i], places=6)
         
         # Save validation results to output directory
         with open(os.path.join(OUTPUT_DIR, "interface_pymdp_validation_test.json"), "w") as f:

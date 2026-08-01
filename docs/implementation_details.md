@@ -1,215 +1,131 @@
-# PyMDP-MCP Implementation Details
+# Implementation Details
 
-This document provides technical details on how the PyMDP framework is integrated with the Model Context Protocol (MCP) server.
+This document describes how the project actually works, at the level of the
+source code in `src/`.
 
-## Architecture Overview
+## Layered architecture
 
-The PyMDP-MCP implementation follows a layered architecture:
+1. **MCP server layer** — `src/main.py` declares MCP tools (`@mcp.tool()`) on
+   the bundled FastMCP implementation in `src/mcp/server/fastmcp.py`, which runs
+   over SSE (default) or stdio.
+2. **FastAPI HTTP layer** — `src/mcp/server/app.py` builds a FastAPI app
+   (`create_app()`, `app = create_app()` at module scope) exposing the same
+   capability set as REST endpoints, served with uvicorn.
+3. **PyMDP interface layer** — `PyMDPInterface` in `src/mcp/utils.py` is the
+   single bridge between the servers and PyMDP.
+4. **PyMDP (dependency)** — the unmodified `inferactively-pymdp` pip package.
 
-1. **MCP Server Layer**: Implemented with FastMCP in `src/main.py`, handles API requests and routing
-2. **PyMDP Interface Layer**: The `PyMDPInterface` class in `src/mcp/utils.py` acts as a bridge between MCP tools and PyMDP
-3. **Client Implementation Layer**: Provides both network-based and direct client access in `src/mcp/client.py`
-4. **PyMDP Core**: Uses the original PyMDP library from the pymdp-clone directory for all active inference algorithms
+## `PyMDPInterface`
 
-## Core Components
-
-### PyMDP Interface
-
-The central component of the integration is the `PyMDPInterface` class which:
-
-- Maintains registries of agents, environments, and simulation histories
-- Provides methods that map directly to MCP tools
-- Handles data conversion between JSON and PyMDP's NumPy-based data structures
-- Manages serialization of complex objects and arrays
-- Provides rich visualization capabilities
+The central class. Its constructor keeps in-memory state:
 
 ```python
-class PyMDPInterface:
-    def __init__(self):
-        """Initialize the PyMDP interface."""
-        self.agents = {}
-        self.environments = {}
-        self.simulation_history = {}
-        self.computation_logs = {}
-        self.debug_mode = True
-        self.sessions = {}
+def __init__(self):
+    self.agents = {}             # name -> pymdp Agent
+    self.environments = {}       # name -> environment object/dict
+    self.simulation_history = {}
+    self.computation_logs = {}
+    self.debug_mode = True
+    self.sessions = {}           # session id -> {agent, environment, history}
 ```
 
-### MCP Server Implementation
-
-The MCP server is implemented using the FastMCP framework, with tools defined as async functions:
-
-```python
-@mcp.tool()
-async def create_agent(ctx: Context, name: str, generative_model: str) -> str:
-    """Create an active inference agent with specified parameters."""
-    try:
-        pymdp_interface = ctx.request_context.lifespan_context.pymdp_interface
-        model_dict = json.loads(generative_model)
-        result = pymdp_interface.create_agent(name, model_dict)
-        return json.dumps({"result": {"agent": result}}, indent=2, cls=NumpyEncoder)
-    except Exception as e:
-        return json.dumps({"error": f"Error creating agent: {str(e)}"})
-```
-
-### Agent Management
-
-Agents are created and stored in the `PyMDPInterface.agents` dictionary:
+Agent creation normalizes the supplied `A`/`B` (and optional `C`/`D`) JSON into
+the NumPy object arrays PyMDP expects, then constructs a PyMDP `Agent` and stores
+it by name:
 
 ```python
-def create_agent(self, name: str, generative_model: Dict) -> Dict:
-    """Create an agent from a generative model."""
-    # Extract generative model components
+def create_agent(self, name, generative_model):
     A = generative_model.get("A", [])
     B = generative_model.get("B", [])
     C = generative_model.get("C", None)
     D = generative_model.get("D", None)
-    
-    # Convert to PyMDP format
-    A_obj = self._convert_to_obj_array(A)
-    B_obj = self._convert_to_obj_array(B)
-    C_obj = self._convert_to_obj_array(C) if C is not None else None
-    D_obj = self._convert_to_obj_array(D) if D is not None else None
-    
-    # Create the PyMDP agent
+    # ... normalize A columns to sum to 1, B along each action ...
     agent = Agent(A=A_obj, B=B_obj, C=C_obj, D=D_obj)
-    
-    # Store the agent
     self.agents[name] = agent
-    
-    return {"name": name, "details": "Agent created successfully"}
+    return {"name": name, "num_observation_modalities": ..., "num_state_factors": ...}
 ```
 
-### Environment Simulation
-
-The implementation includes built-in support for grid world environments:
+Environment creation builds a step/reset environment (used for gridworld) and
+stores it in `self.environments`:
 
 ```python
-def create_grid_world_env(self, name: str, grid_size: List[int], reward_positions: List[List[int]]) -> Dict:
-    """Create a grid world environment."""
-    # Create the environment object with state and methods
-    env = {
-        "type": "grid_world",
-        "grid_size": grid_size,
-        "reward_positions": reward_positions,
-        "agent_pos": [0, 0],  # Default starting position
-        "step_count": 0
-    }
-    
-    # Store environment and return reference
+def create_grid_world_env(self, name, grid_size, reward_positions):
+    # returns environment metadata and registers the environment
     self.environments[name] = env
-    return {"name": name, "details": env}
+    return {"name": name, ...}
 ```
 
-### Data Conversion Utilities
+## MCP server (`src/main.py`)
 
-The implementation includes specialized utilities for converting between JSON and PyMDP's NumPy arrays:
+Each tool is an async function that receives an MCP `Context`, pulls the shared
+`PyMDPInterface` from the lifespan context, calls the corresponding
+`PyMDPInterface` method, and serializes the result with `NumpyEncoder`:
 
 ```python
-class NumpyEncoder(json.JSONEncoder):
-    """Custom JSON encoder that handles NumPy types."""
-    def default(self, obj):
-        if isinstance(obj, (np.integer, np.int64, np.int32, np.int16, np.int8)):
-            return int(obj)
-        elif isinstance(obj, (np.floating, np.float64, np.float32, np.float16)):
-            return float(obj)
-        elif isinstance(obj, (np.ndarray,)):
-            return obj.tolist()
-        elif isinstance(obj, (np.bool_)):
-            return bool(obj)
-        return super(NumpyEncoder, self).default(obj)
+@mcp.tool()
+async def create_agent(ctx: Context, name: str, generative_model: str) -> str:
+    pymdp_interface = ctx.request_context.lifespan_context.pymdp_interface
+    model_dict = json.loads(generative_model)
+    result = pymdp_interface.create_agent(name, model_dict)
+    return json.dumps({"result": {"agent": result}}, cls=NumpyEncoder)
 ```
 
-### Client Implementation
+`src/mcp/server/fastmcp.py` provides a minimal `FastMCP` class that registers
+tools via `@mcp.tool()`, extracts their parameters from the function signature,
+and serves them over SSE (`/schema`, `/tools`, `/invoke`, `/sse`) or stdio
+(line-delimited JSON on stdin/stdout). It reads `HOST`/`PORT`/`TRANSPORT` from the
+environment (defaults `0.0.0.0`, `8050`, `sse`).
 
-Two client implementations are provided:
+## FastAPI HTTP server (`src/mcp/server/app.py`)
 
-1. **MCPClient**: For network-based communication
+Built with `create_app()` and exposed as `app`. Highlights:
 
-```python
-class MCPClient:
-    """Client for communicating with the MCP server"""
-    
-    async def call_tool(self, tool_id, params=None):
-        """Call an MCP tool on the server."""
-        # Prepare request data
-        request_data = {"params": params or {}}
-        
-        # Make request to server
-        tool_url = f"{self.server_url}/tools/{tool_id}"
-        async with self.session.post(tool_url, json=request_data) as response:
-            response_data = await response.json()
-            return response_data
-```
+- `GET /ping` — health check.
+- `GET /tools`, `POST /tools/{tool_id}` — list and invoke tools.
+- `GET /agents`, `GET /agents/{agent_id}` — list/retrieve agents.
+- `GET /environments`, `POST /environments`, `GET /environments/{env_id}` —
+  manage environments.
+- `GET /simulations`, `POST /sessions`, `POST /sessions/{id}/run` — run and
+  query simulation sessions.
+- `/agents/{id}/visualize`, `/sessions/{id}/visualize`,
+  `/analyze/free_energy/{id}`, `/analyze/beliefs/{id}` — analysis and
+  visualization.
 
-2. **DirectMCPClient**: For direct function calls without network overhead
+It maintains a module-level `pymdp_interface` plus a `sessions` registry so
+state persists across requests.
 
-```python
-class DirectMCPClient:
-    """Client that directly calls MCP tools without going through the server."""
-    
-    async def call_tool(self, tool_name, **params):
-        """Call a tool directly."""
-        # Get PyMDP interface
-        interface = get_pymdp_interface()
-        
-        # Call the method directly on the interface
-        if hasattr(interface, tool_name):
-            method = getattr(interface, tool_name)
-            result = method(**params)
-            return {"result": result}
-        else:
-            return {"error": f"Tool {tool_name} not found"}
-```
+## Data conversion
 
-## Visualization Capabilities
+- `NumpyEncoder` (in `src/mcp/utils.py`) serializes `np.integer`,
+  `np.floating`, `np.ndarray`, and `np.bool_` to native JSON types.
+- `_convert_to_obj_array` / `_convert_from_obj_array` / `_ensure_native_types`
+  convert between plain JSON lists and PyMDP's nested NumPy object arrays.
 
-The implementation includes extensive visualization support through a monkey-patched extension system:
+## Visualization
 
-```python
-def _add_visualization_methods():
-    """Add visualization methods to PyMDPInterface class."""
-    
-    def plot_belief_dynamics(self, session_id: str, output_file: str = "belief_dynamics.png") -> Dict:
-        """Generate a visualization of belief dynamics over time for a session."""
-        # Implementation...
-    
-    def analyze_free_energy(self, session_id: str, output_file: str = "free_energy.png") -> Dict:
-        """Analyze and visualize free energy components from a session."""
-        # Implementation...
-    
-    # Add methods to the class
-    PyMDPInterface.plot_belief_dynamics = plot_belief_dynamics
-    PyMDPInterface.analyze_free_energy = analyze_free_energy
-```
+`src/mcp/visualization/extensions.py`'s `_add_visualization_methods()` attaches
+methods to `PyMDPInterface` at runtime: `plot_belief_dynamics` (heatmaps of
+belief evolution, one panel per state factor) and `analyze_free_energy` (plots +
+metrics of the free-energy process). The `mcp` package's `visualization` module
+also exports generative-model, free-energy, and simulation plotting helpers.
 
-## Session Management
+## Clients
 
-The implementation supports persistent sessions to maintain state across multiple tool calls:
+`src/mcp/client.py` and `src/mcp/client/` provide:
 
-```python
-# Session example from implementation
-session = {
-    "agent_id": agent_id,
-    "env_id": env_id,
-    "history": {
-        "timesteps": [],
-        "metadata": {
-            "start_time": time.time(),
-            "agent_details": self.get_agent(agent_id),
-            "env_details": self.get_environment(env_id)
-        }
-    }
-}
-self.sessions[session_id] = session
-```
+- **`MCPClient`** — async aiohttp client against the HTTP server (`ping`,
+  `get_tools`, `call_tool`); can log requests/responses and write outputs to a
+  directory.
+- **`DirectMCPClient`** — calls the `src/main.py` tools in-process with a mock
+  context, no server needed (useful for tests/development).
+- **`MCPToolKit`** (`client/tools.py`) — higher-level convenience wrappers.
 
-## Performance Considerations
+There is also `get_best_client(output_dir=None)`, which probes for a running
+server at `http://localhost:8050/schema` and falls back to `DirectMCPClient`.
 
-The implementation includes several optimization strategies:
+## Session management
 
-1. **Caching**: Storing computation results to avoid redundant operations
-2. **Custom Serialization**: Efficient conversion between NumPy arrays and JSON
-3. **Direct Client Option**: Bypassing network overhead for local usage
-4. **Session Management**: Maintaining state to avoid reinitialization costs
-5. **Asynchronous Processing**: Supporting concurrent operations with asyncio 
+Sessions bind an agent to an environment and accumulate a per-timestep history
+(`observations`, `actions`, `rewards`, `states`, `policies`, `free_energies`).
+They are stored in `PyMDPInterface.sessions` and queried/visualized through the
+HTTP layer.

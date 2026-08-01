@@ -24,10 +24,6 @@ src_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 if src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
-# Add the pymdp-clone directory to path to ensure we're using the real PyMDP library
-pymdp_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'pymdp-clone')
-if pymdp_dir not in sys.path:
-    sys.path.insert(0, pymdp_dir)
 
 # Import directly from the utils module
 from mcp.utils import PyMDPInterface
@@ -49,10 +45,6 @@ src_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 if src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
-# Add the pymdp-clone directory to path to ensure we're using the real PyMDP library
-pymdp_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'pymdp-clone')
-if pymdp_dir not in sys.path:
-    sys.path.insert(0, pymdp_dir)
 
 # Import directly from the utils module
 from utils import PyMDPInterface

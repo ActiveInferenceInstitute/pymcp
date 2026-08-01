@@ -6,14 +6,14 @@ designed to be efficient and easy to use for exposing PyMDP functionality.
 """
 
 import asyncio
+import inspect
 import json
 import os
-import inspect
-from typing import Dict, Any, Callable, Optional, AsyncIterator, List, Union
-from dataclasses import dataclass
-from contextlib import asynccontextmanager
-import time
 import sys
+import time
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Union
 
 # Constants
 DEFAULT_HOST = "0.0.0.0"
@@ -38,8 +38,8 @@ class FastMCP:
     
     This class provides a server that exposes MCP tools to clients.
     """
-    
-    def __init__(self, name: str, description: str, lifespan, 
+
+    def __init__(self, name: str, description: str, lifespan,
                  host: str = None, port: str = None, transport: str = None):
         """
         Initialize an MCP server.
@@ -55,16 +55,16 @@ class FastMCP:
         self.name = name
         self.description = description
         self.lifespan = lifespan
-        
+
         # Get configuration from environment if not provided
         self.host = host or os.environ.get("HOST", DEFAULT_HOST)
         self.port = port or os.environ.get("PORT", DEFAULT_PORT)
         self.transport = transport or os.environ.get("TRANSPORT", DEFAULT_TRANSPORT)
-        
+
         # Initialize storage for tools
         self.tools: Dict[str, Callable] = {}
         self.tool_descriptions: Dict[str, Dict[str, Any]] = {}
-    
+
     def tool(self, name: str = None, description: str = None):
         """
         Decorator to register a function as an MCP tool.
@@ -79,21 +79,21 @@ class FastMCP:
         def decorator(func):
             # Get tool name
             tool_name = name or func.__name__
-            
+
             # Get tool description from docstring if not provided
             tool_desc = description
             if not tool_desc and func.__doc__:
                 tool_desc = func.__doc__.strip()
-            
+
             # Parse function signature for parameters
             sig = inspect.signature(func)
             parameters = {}
-            
+
             for param_name, param in sig.parameters.items():
                 # Skip context parameter
                 if param_name == "ctx":
                     continue
-                
+
                 # Extract parameter type and default value
                 param_type = "string"  # Default type
                 if param.annotation != inspect.Parameter.empty:
@@ -105,20 +105,20 @@ class FastMCP:
                         param_type = "object"
                     elif param.annotation == list or param.annotation == List:
                         param_type = "array"
-                
+
                 # Determine if parameter is required
                 required = param.default == inspect.Parameter.empty
-                
+
                 # Create parameter description
                 parameters[param_name] = {
                     "type": param_type,
                     "required": required
                 }
-                
+
                 # Add default value if available
                 if not required:
                     parameters[param_name]["default"] = param.default
-            
+
             # Store tool information
             self.tools[tool_name] = func
             self.tool_descriptions[tool_name] = {
@@ -126,11 +126,11 @@ class FastMCP:
                 "description": tool_desc,
                 "parameters": parameters
             }
-            
+
             return func
-        
+
         return decorator
-    
+
     async def handle_request(self, request_data: Dict[str, Any], lifespan_context: Any) -> Dict[str, Any]:
         """
         Handle an incoming MCP request.
@@ -146,7 +146,7 @@ class FastMCP:
         request_id = request_data.get("id")
         tool_name = request_data.get("name")
         parameters = request_data.get("parameters", {})
-        
+
         # Check if tool exists
         if tool_name not in self.tools:
             return {
@@ -154,16 +154,16 @@ class FastMCP:
                 "status": "error",
                 "error": f"Unknown tool: {tool_name}"
             }
-        
+
         # Create request context
         request_context = RequestContext(lifespan_context)
         context = Context(request_context=request_context)
-        
+
         try:
             # Call the tool function
             tool_func = self.tools[tool_name]
             result = await tool_func(context, **parameters)
-            
+
             # Return successful response
             return {
                 "id": request_id,
@@ -179,7 +179,7 @@ class FastMCP:
                 "status": "error",
                 "error": str(e)
             }
-    
+
     async def get_schema(self) -> Dict[str, Any]:
         """
         Get the OpenAPI schema for the MCP server.
@@ -196,13 +196,13 @@ class FastMCP:
                     "type": "object",
                     "properties": tool_desc.get("parameters", {}),
                     "required": [
-                        param_name for param_name, param_desc in 
-                        tool_desc.get("parameters", {}).items() 
+                        param_name for param_name, param_desc in
+                        tool_desc.get("parameters", {}).items()
                         if param_desc.get("required", False)
                     ]
                 }
             })
-        
+
         return {
             "openapi": "3.1.0",
             "info": {
@@ -246,21 +246,21 @@ class FastMCP:
                 "schemas": {}
             }
         }
-    
+
     async def run_sse(self):
         """Run the MCP server using SSE transport."""
         try:
-            from fastapi import FastAPI, Request
-            from fastapi.responses import StreamingResponse
-            from fastapi.middleware.cors import CORSMiddleware
             import uvicorn
+            from fastapi import FastAPI, Request
+            from fastapi.middleware.cors import CORSMiddleware
+            from fastapi.responses import StreamingResponse
         except ImportError:
             print("Error: FastAPI and uvicorn are required for SSE transport")
             print("Install with: pip install fastapi uvicorn")
             sys.exit(1)
-        
+
         app = FastAPI(title=self.name, description=self.description)
-        
+
         # Add CORS middleware
         app.add_middleware(
             CORSMiddleware,
@@ -269,54 +269,54 @@ class FastMCP:
             allow_methods=["*"],
             allow_headers=["*"],
         )
-        
+
         # Create lifespan context
         @app.on_event("startup")
         async def startup():
             app.state.lifespan_cm = self.lifespan(self)
             app.state.lifespan_context = await app.state.lifespan_cm.__aenter__()
-        
+
         @app.on_event("shutdown")
         async def shutdown():
             await app.state.lifespan_cm.__aexit__(None, None, None)
-        
+
         # Define routes
         @app.get("/schema")
         async def get_schema():
             return await self.get_schema()
-        
+
         @app.get("/tools")
         async def get_tools():
             return list(self.tool_descriptions.values())
-        
+
         @app.post("/invoke")
         async def invoke_tool(request_data: dict):
             return await self.handle_request(request_data, app.state.lifespan_context)
-        
+
         @app.get("/sse")
         async def sse_endpoint(request: Request):
             async def event_generator():
                 # Send initial connection message
                 yield f"data: {json.dumps({'type': 'connection', 'status': 'connected'})}\n\n"
-                
+
                 try:
                     # Keep connection alive
                     while True:
                         if await request.is_disconnected():
                             break
-                        
+
                         # Process incoming requests
                         request_data = await request.json()
                         response = await self.handle_request(request_data, app.state.lifespan_context)
-                        
+
                         # Send response
                         yield f"data: {json.dumps(response)}\n\n"
-                        
+
                         # Brief pause to prevent tight loop
                         await asyncio.sleep(0.01)
                 except Exception as e:
                     yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
-            
+
             return StreamingResponse(
                 event_generator(),
                 media_type="text/event-stream",
@@ -326,10 +326,11 @@ class FastMCP:
                     "Content-Type": "text/event-stream"
                 }
             )
-        
-        # Run the server
-        uvicorn.run(app, host=self.host, port=int(self.port))
-    
+
+        # Run the server (loop-safe: serve() is awaitable inside an asyncio loop)
+        server = uvicorn.Server(uvicorn.Config(app, host=self.host, port=int(self.port)))
+        await server.serve()
+
     async def run_stdio(self):
         """Run the MCP server using stdio transport."""
         # Create lifespan context
@@ -340,13 +341,13 @@ class FastMCP:
                     line = sys.stdin.readline()
                     if not line:
                         break
-                    
+
                     # Parse request
                     request_data = json.loads(line)
-                    
+
                     # Handle request
                     response = await self.handle_request(request_data, lifespan_context)
-                    
+
                     # Send response
                     sys.stdout.write(json.dumps(response) + "\n")
                     sys.stdout.flush()
@@ -366,7 +367,7 @@ class FastMCP:
                         "error": str(e)
                     }) + "\n")
                     sys.stdout.flush()
-    
+
     async def run(self):
         """Run the MCP server with the configured transport."""
         if self.transport == "sse":
@@ -377,4 +378,4 @@ class FastMCP:
             raise ValueError(f"Unsupported transport: {self.transport}")
 
 # Shortcut function for tool decorator
-tool = FastMCP.tool 
+tool = FastMCP.tool

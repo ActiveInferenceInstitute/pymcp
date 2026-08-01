@@ -1,341 +1,175 @@
-# MCP Tools for PyMDP
+# MCP Tools Reference
 
-This document details the MCP tools provided by the PyMDP-MCP server and shows how they map directly to the PyMDP API. Each tool is implemented by calling the corresponding PyMDP functions without any simplification or mocking.
+This document describes the tools that this project actually exposes. Every tool
+is a thin wrapper over a method on `PyMDPInterface` (`src/mcp/utils.py`), which
+calls the real PyMDP library. The two servers — the MCP tools in `src/main.py`
+(delivered over SSE or stdio) and the REST API in `src/mcp/server/app.py` — both
+route to these same methods, so their behavior is identical.
 
-## Agent Creation and Configuration
+> **Note on scope.** Earlier drafts of these docs listed tools such as
+> `enable_jax`, `run_tmaze_example`, `calculate_kl_divergence`,
+> `calculate_entropy`, `set_temporal_horizon`, `deep_planning`,
+> `register_environment`, `connect_agent_to_environment`, `enable_learning`,
+> `update_model`, `create_simulation`, `analyze_simulation`, `jax_infer_states`
+> and `run_learning_example`. **None of those exist in the code.** The only tools
+> available are the `PyMDPInterface` methods below.
 
-### `create_agent`
+## The core methods
 
-Creates a new active inference agent with the specified parameters.
+### Agent creation and model definition
 
-**MCP Tool:**
+#### `create_agent(name, generative_model)`
+
+Create an active inference agent from a generative-model dict containing `A`
+(observation likelihood) and `B` (state transitions), with optional `C` (prior
+preferences) and `D` (prior beliefs). `A` and `B` are required.
+
 ```python
-@mcp.tool()
-def create_agent(name: str, generative_model: dict, inference_params: dict = None):
-    """Create a new active inference agent."""
-    # Extract parameters from generative_model
-    A = convert_from_json(generative_model.get("A"))
-    B = convert_from_json(generative_model.get("B"))
-    C = convert_from_json(generative_model.get("C"))
-    D = convert_from_json(generative_model.get("D", None))
-    
-    # Create PyMDP agent directly using the original Agent class
-    agent = pymdp.agent.Agent(A=A, B=B, C=C, D=D, **inference_params or {})
-    
-    # Register agent in registry
-    agent_registry.register_agent(name, agent)
-    
-    return {"status": "success", "agent_name": name}
+pymdp.create_agent("agent_1", {
+    "A": [[...]],   # observation model
+    "B": [[...]],   # transition model
+    "C": [[...]],   # optional priors over outcomes
+    "D": [[...]],   # optional priors over states
+})
 ```
 
-**Corresponding PyMDP API:**
+Returns agent metadata (number of observation modalities, state factors, and
+controls).
+
+#### `define_generative_model(A_dims, B_dims)`
+
+Build **random** `A` and `B` matrices from dimension lists, plus default flat `C`
+and uniform `D` priors.
+
+- `A_dims`: list of `[obs_dim, state_dim]` per observation modality.
+- `B_dims`: list of `[state_to, state_from, action_dim]` per state factor.
+
 ```python
-from pymdp.agent import Agent
-
-# Create an agent directly
-agent = Agent(A=A, B=B, C=C, D=D, **inference_params)
-```
-
-### `define_generative_model`
-
-Defines or updates the generative model for an existing agent.
-
-**MCP Tool:**
-```python
-@mcp.tool()
-def define_generative_model(agent_name: str, A: list = None, B: list = None, 
-                           C: list = None, D: list = None):
-    """Define or update the generative model for an agent."""
-    agent = agent_registry.get_agent(agent_name)
-    
-    # Update the agent's generative model components directly
-    if A is not None:
-        agent.A = convert_from_json(A)
-    if B is not None:
-        agent.B = convert_from_json(B)
-    if C is not None:
-        agent.C = convert_from_json(C)
-    if D is not None:
-        agent.D = convert_from_json(D)
-    
-    return {"status": "success", "agent_name": agent_name}
-```
-
-**Corresponding PyMDP API:**
-```python
-# Update agent's generative model directly
-agent.A = A
-agent.B = B
-agent.C = C
-agent.D = D
-```
-
-## Inference and Planning
-
-### `infer_states`
-
-Performs inference on hidden states given an observation.
-
-**MCP Tool:**
-```python
-@mcp.tool()
-def infer_states(agent_name: str, observation: list, method: str = "FPI", 
-                num_iter: int = 10, dF: float = 0.001, grad_descent: bool = False):
-    """Infer hidden states given an observation."""
-    agent = agent_registry.get_agent(agent_name)
-    
-    # Direct call to the agent's infer_states method
-    qs = agent.infer_states(
-        observation=observation,
-        method=method,
-        num_iter=num_iter,
-        dF=dF,
-        grad_descent=grad_descent
-    )
-    
-    # Convert numpy arrays to lists for JSON serialization
-    posterior_beliefs = [q.tolist() for q in qs]
-    
-    return {"posterior_beliefs": posterior_beliefs}
-```
-
-**Corresponding PyMDP API:**
-```python
-# Infer states directly
-qs = agent.infer_states(
-    observation=observation,
-    method=method,
-    num_iter=num_iter,
-    dF=dF,
-    grad_descent=grad_descent
+model = pymdp.define_generative_model(
+    A_dims=[[3, 4]],
+    B_dims=[[4, 4, 4]],
 )
 ```
 
-### `infer_policies`
+#### `create_gridworld_agent(name, grid_size, reward_positions, ...)`
 
-Computes the posterior over policies and their expected free energies.
+Create an agent tailored to a gridworld: a position observation (identity map of
+the grid) plus a reward observation, with strong preference for reward cells.
 
-**MCP Tool:**
 ```python
-@mcp.tool()
-def infer_policies(agent_name: str, use_utility: bool = True, 
-                  use_states_info_gain: bool = True, use_param_info_gain: bool = False):
-    """Infer policies based on expected free energy."""
-    agent = agent_registry.get_agent(agent_name)
-    
-    # Direct call to the agent's infer_policies method
-    q_pi, efe = agent.infer_policies(
-        use_utility=use_utility,
-        use_states_info_gain=use_states_info_gain,
-        use_param_info_gain=use_param_info_gain
-    )
-    
-    return {
-        "policy_beliefs": q_pi.tolist(),
-        "expected_free_energy": efe.tolist()
-    }
-```
-
-**Corresponding PyMDP API:**
-```python
-# Infer policies directly
-q_pi, efe = agent.infer_policies(
-    use_utility=use_utility,
-    use_states_info_gain=use_states_info_gain,
-    use_param_info_gain=use_param_info_gain
+pymdp.create_gridworld_agent(
+    "agent_1",
+    grid_size=[3, 3],
+    reward_positions=[[2, 2]],
+    action_precision=1.0,
+    inference_horizon=5,
 )
 ```
 
-### `sample_action`
+### Environments
 
-Samples an action from the agent's policy distribution.
+#### `create_grid_world_env(name, grid_size, reward_positions)`
 
-**MCP Tool:**
+Create a gridworld environment. Returns environment metadata.
+
 ```python
-@mcp.tool()
-def sample_action(agent_name: str, modalities: list = None):
-    """Sample an action from the agent's policy distribution."""
-    agent = agent_registry.get_agent(agent_name)
-    
-    # Direct call to the agent's sample_action method
-    action = agent.sample_action(modalities=modalities)
-    
-    if isinstance(action, list):
-        return {"action": action}
-    else:
-        return {"action": [action]}
+env = pymdp.create_grid_world_env("world_1", [3, 3], [[2, 2]])
 ```
 
-**Corresponding PyMDP API:**
+#### `step_environment(env_id, action)`
+
+Advance an environment by one step given an action index (or list of indices).
+Returns the new observation, reward, and status.
+
 ```python
-# Sample action directly
-action = agent.sample_action(modalities=modalities)
+result = pymdp.step_environment("world_1", [1])
 ```
 
-## Environment Interaction
+#### `reset_environment(env_id)`
 
-### `step_environment`
+Reset an environment to its initial state and return the initial observation.
 
-Updates the environment given an agent's action.
-
-**MCP Tool:**
 ```python
-@mcp.tool()
-def step_environment(env_name: str, action: list):
-    """Update the environment given an action."""
-    env = environment_registry.get_environment(env_name)
-    
-    # Direct call to the environment's step method
-    observation, reward, done, info = env.step(action)
-    
-    return {
-        "observation": observation.tolist() if isinstance(observation, np.ndarray) else observation,
-        "reward": float(reward) if isinstance(reward, (np.ndarray, np.float_)) else reward,
-        "done": done,
-        "info": info
-    }
+pymdp.reset_environment("world_1")
 ```
 
-**Corresponding PyMDP API:**
+### Inference and action selection
+
+#### `infer_states(agent_id, observation, method="FPI")`
+
+Compute a posterior over hidden states given an observation. `method` selects the
+message-passing algorithm PyMDP uses (`FPI`, `BP`, etc.).
+
 ```python
-# Step environment directly
-observation, reward, done, info = env.step(action)
+result = pymdp.infer_states("agent_1", [0, 2])
+# -> {"posterior_states": [[...], ...]}
 ```
 
-### `reset_environment`
+#### `infer_policies(agent_id, planning_horizon=None)`
 
-Resets the environment to its initial state.
+Optimize the belief over policies by expected free energy, returning the policy
+posterior and expected free energy.
 
-**MCP Tool:**
 ```python
-@mcp.tool()
-def reset_environment(env_name: str):
-    """Reset the environment to its initial state."""
-    env = environment_registry.get_environment(env_name)
-    
-    # Direct call to the environment's reset method
-    observation = env.reset()
-    
-    return {
-        "observation": observation.tolist() if isinstance(observation, np.ndarray) else observation
-    }
+result = pymdp.infer_policies("agent_1")
 ```
 
-**Corresponding PyMDP API:**
+#### `sample_action(agent_id, planning_horizon=None)`
+
+Sample an action from the agent's policy posterior.
+
 ```python
-# Reset environment directly
-observation = env.reset()
+result = pymdp.sample_action("agent_1")
 ```
 
-## Advanced Features
+### Simulation
 
-### `calculate_free_energy`
+#### `run_simulation(agent_id, env_id, num_steps=10, ...)`
 
-Calculates the variational free energy for a given belief and observation.
+Run the full perception–action loop: infer states, infer policies, sample an
+action, step the environment, and record the history (`observations`, `actions`,
+`rewards`, `states`, `policies`, `free_energies`).
 
-**MCP Tool:**
 ```python
-@mcp.tool()
-def calculate_free_energy(agent_name: str, beliefs: list, observation: list):
-    """Calculate variational free energy for given beliefs and observation."""
-    agent = agent_registry.get_agent(agent_name)
-    
-    # Convert JSON to NumPy arrays
-    beliefs_np = convert_from_json(beliefs)
-    
-    # Use PyMDP's mathematical functions directly
-    F = pymdp.maths.calculate_free_energy(
-        beliefs_np, 
-        agent.A, 
-        agent.B, 
-        agent.C, 
-        agent.D, 
-        observation
-    )
-    
-    return {"free_energy": float(F)}
+result = pymdp.run_simulation("agent_1", "world_1", num_steps=10)
 ```
 
-**Corresponding PyMDP API:**
-```python
-from pymdp.maths import calculate_free_energy
+### Introspection
 
-# Calculate free energy directly
-F = calculate_free_energy(beliefs, A, B, C, D, observation)
+#### `get_agent(name)` / `get_environment(name)`
+
+Retrieve a stored agent or environment as serializable JSON.
+
+#### `get_all_functions()`
+
+Return the list of all public methods available on the interface.
+
+```python
+pymdp.get_all_functions()
+# -> {"functions": ["calculate_free_energy", "create_agent", ...]}
 ```
 
-### `run_tmaze_example`
+## Additional helpers
 
-Runs the T-maze example from the PyMDP repository.
+The interface also exposes a few non-core helpers used for analysis:
 
-**MCP Tool:**
-```python
-@mcp.tool()
-def run_tmaze_example(reward_location: str = "left", agent_type: str = "sophisticated", 
-                     num_trials: int = 10):
-    """Run the T-maze example from PyMDP examples."""
-    import pymdp.examples as examples
-    
-    # Use the example directly from PyMDP
-    results = examples.tmaze.run_tmaze_demo(
-        reward_location=reward_location,
-        agent_type=agent_type,
-        num_trials=num_trials
-    )
-    
-    return {
-        "trial_results": results["trial_results"],
-        "agent_beliefs": [q.tolist() for q in results["agent_beliefs"]]
-    }
-```
+| Method | Description |
+| --- | --- |
+| `validate_generative_model(model, check_normalization=True)` | Validate structure and normalization of `A`/`B` matrices. |
+| `calculate_free_energy(A_matrix, prior, observation, q_states)` | Compute variational free energy (accuracy/complexity decomposition). |
+| `infer_states_from_observation(A_matrix, prior, observation)` | Single-step posterior via Bayes' rule (`pymdp.maths.get_joint_likelihood`). |
+| `get_all_agents` / `get_all_environments` / `get_all_simulations` | List everything stored in the interface registries. |
 
-**Corresponding PyMDP Example:**
-```python
-from pymdp.examples import tmaze
+Visualization methods (`visualize_belief_dynamics`, `plot_belief_dynamics`,
+`analyze_free_energy`, `visualize_simulation`) are attached to the interface by
+`src/mcp/visualization/extensions.py`.
 
-# Run example directly
-results = tmaze.run_tmaze_demo(
-    reward_location=reward_location,
-    agent_type=agent_type,
-    num_trials=num_trials
-)
-```
+## How a tool call flows
 
-## Integration with PyMDP JAX Support
+1. A client calls a tool (over MCP SSE/stdio, or an HTTP endpoint).
+2. The server looks up the corresponding `PyMDPInterface` method.
+3. `PyMDPInterface` calls the unmodified PyMDP API.
+4. Results (NumPy object arrays) are converted to plain JSON via `NumpyEncoder`
+   and `_convert_from_obj_array`, and returned to the client.
 
-### `enable_jax`
-
-Enables JAX acceleration for an agent.
-
-**MCP Tool:**
-```python
-@mcp.tool()
-def enable_jax(agent_name: str):
-    """Enable JAX acceleration for an agent."""
-    agent = agent_registry.get_agent(agent_name)
-    
-    # Import JAX module from PyMDP
-    import pymdp.jax as jax_pymdp
-    
-    # Convert agent to JAX-enabled version
-    jax_agent = jax_pymdp.convert_to_jax_agent(agent)
-    
-    # Update registry with JAX agent
-    agent_registry.register_agent(agent_name, jax_agent)
-    
-    return {"status": "success", "jax_enabled": True}
-```
-
-**Corresponding PyMDP API:**
-```python
-from pymdp.jax import convert_to_jax_agent
-
-# Enable JAX directly
-jax_agent = convert_to_jax_agent(agent)
-```
-
-## Summary
-
-As demonstrated above, all MCP tools directly map to PyMDP API calls without any simplification or mocking. The MCP server provides a thin wrapper around the PyMDP library, ensuring that the behavior and results are identical to using PyMDP directly.
-
-For a complete reference of the PyMDP API, see the [PyMDP documentation](https://pymdp.readthedocs.io/). 
+For the full underlying PyMDP API, see the [PyMDP documentation](https://pymdp.readthedocs.io/).

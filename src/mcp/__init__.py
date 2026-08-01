@@ -16,44 +16,38 @@ The package includes the following components:
 __version__ = "0.1.0"
 
 # Import client components
-from .client import (
-    MCPClient,
-    MCPToolKit,
-    load_config,
-    save_config,
-    get_server_url
+from .client import MCPClient, MCPToolKit, get_server_url, load_config, save_config
+
+# Import environments
+from .environments import (
+    CustomEnvironment,
+    GridWorldEnvironment,
+    create_custom_env,
+    create_grid_world_env,
 )
 
 # Import visualization module
 from .visualization import (
-    visualize_generative_model,
-    visualize_free_energy_components,
-    visualize_variational_free_energy,
-    visualize_simulation,
     create_belief_heatmap,
-    visualize_policy_evolution
-)
-
-# Import environments
-from .environments import (
-    GridWorldEnvironment,
-    create_grid_world_env,
-    CustomEnvironment,
-    create_custom_env
+    visualize_free_energy_components,
+    visualize_generative_model,
+    visualize_policy_evolution,
+    visualize_simulation,
+    visualize_variational_free_energy,
 )
 
 # Define top-level exports
 __all__ = [
     # Version
     '__version__',
-    
+
     # Client
     'MCPClient',
     'MCPToolKit',
     'load_config',
     'save_config',
     'get_server_url',
-    
+
     # Visualization
     'visualize_generative_model',
     'visualize_free_energy_components',
@@ -61,10 +55,10 @@ __all__ = [
     'visualize_simulation',
     'create_belief_heatmap',
     'visualize_policy_evolution',
-    
+
     # Environments
     'GridWorldEnvironment',
     'create_grid_world_env',
     'CustomEnvironment',
     'create_custom_env'
-] 
+]

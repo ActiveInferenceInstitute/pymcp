@@ -1,0 +1,34 @@
+Fix Python/PyMDP integration, make suite green, rewrite docs; remove committed artifacts
+
+Core (PyMDP 1.0.3 API):
+- Rewrite PyMDPInterface for the current immutable/equinox, batched PyMDP API:
+  construction-time params, one-hot batched observations, infer_states(obs, prior),
+  infer_policies(qs), sample_action(q_pi), B normalized over destination states.
+- Add missing interface methods: visualize_simulation, get_all_agents,
+  get_all_environments, get_all_simulations, visualize_agent_model.
+- Make run_simulation emit timesteps; add position tracking to step_environment;
+  grid-world stepper moved inline, env dicts now JSON-serializable.
+
+Dependency & reproducibility (was: no declared pymdp dep, phantom pymdp-clone):
+- Declare inferactively-pymdp>=1.0.3 in pyproject.toml.
+- Remove every pymdp-clone path-insert across src/, tests/, scripts/.
+
+Entry point & server:
+- main() now starts the MCP server; FastMCP run_sse is loop-safe
+  (uvicorn.Server.serve()). uv run src/main.py serves SSE/stdio.
+
+Security:
+- FastAPI CORS defaulted to local origins (env-configurable), no
+  wildcard+credentials; confine HTTP visualize output_file to a fixed dir
+  (path-traversal closed).
+- Replace shell-string os.system in main.py test runner with subprocess arg-list.
+
+Tests: full suite green (54 passed / 0 failed) against inferactively-pymdp 1.0.3.
+Lint: ruff check --fix.
+
+Docs: single coherent README (was two concatenated contradictory READMEs);
+prune fabricated tool docs (enable_jax, run_tmaze_example, ...); fix
+port/version/file references; fix malformed .aii DOI.
+
+Hygiene: untrack committed test outputs, server.log, and .egg-info; add
+.gitignore entries; add TODO.md backlog (green status + scoped remainders).

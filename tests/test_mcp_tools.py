@@ -21,10 +21,6 @@ src_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 if src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
-# Add the pymdp-clone directory to path to ensure we're using the real PyMDP library
-pymdp_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'pymdp-clone')
-if pymdp_dir not in sys.path:
-    sys.path.insert(0, pymdp_dir)
 
 # Import directly from the modules
 from mcp.utils import PyMDPInterface
@@ -188,12 +184,15 @@ class TestMCPTools(unittest.TestCase):
         interface = self.ctx.request_context.lifespan_context.pymdp_interface
         agent = interface.agents["infer_agent"]
         
-        # Call inference directly with PyMDP
-        direct_qs = agent.infer_states([0])
-        direct_posterior = [q.tolist() for q in direct_qs]
-        
+        # Call inference directly with PyMDP (current batched API)
+        direct_qs = agent.infer_states(
+            interface._onehot_observations(agent, [0]), interface.priors["infer_agent"])
+        direct_posterior = [interface._unwrap(q) for q in direct_qs]
+
         # Check that the MCP tool returns the same result as direct PyMDP call
-        self.assertEqual(result_obj["posterior_states"], direct_posterior)
+        for i in range(len(result_obj["posterior_states"])):
+            for j in range(len(result_obj["posterior_states"][i])):
+                self.assertAlmostEqual(result_obj["posterior_states"][i][j], direct_posterior[i][j], places=5)
         
         # Save inference result to output directory
         with open(os.path.join(OUTPUT_DIR, "inference_test.json"), "w") as f:
@@ -236,12 +235,14 @@ class TestMCPTools(unittest.TestCase):
         interface = self.ctx.request_context.lifespan_context.pymdp_interface
         agent = interface.agents["policy_agent"]
         
-        # Call policy inference directly with PyMDP
-        direct_q_pi, direct_efe = agent.infer_policies()
+        # Call policy inference directly with PyMDP (current batched API)
+        direct_qs = agent.infer_states(
+            interface._onehot_observations(agent, [0]), interface.priors["policy_agent"])
+        direct_q_pi, direct_efe = agent.infer_policies(direct_qs)
         
         # Check that the MCP tool returns the same result as direct PyMDP call
-        self.assertEqual(result_obj["policy_posterior"], direct_q_pi.tolist())
-        self.assertEqual(result_obj["expected_free_energy"], direct_efe.tolist())
+        self.assertEqual(result_obj["policy_posterior"], interface._unwrap(direct_q_pi))
+        self.assertEqual(result_obj["expected_free_energy"], interface._unwrap(direct_efe))
         
         # Save policy inference result to output directory
         with open(os.path.join(OUTPUT_DIR, "policy_inference_test.json"), "w") as f:

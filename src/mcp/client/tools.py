@@ -4,14 +4,16 @@ MCP Client Tools.
 This module provides high-level wrappers for MCP tools.
 """
 
-import os
-import json
-import numpy as np
-from typing import Dict, Any, List, Optional, Union, Tuple, Callable
-from pathlib import Path
 import asyncio
+import json
+import os
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
+import numpy as np
 
 from .core import MCPClient
+
 
 class MCPToolKit:
     """High-level toolkit for working with MCP tools.
@@ -29,11 +31,11 @@ class MCPToolKit:
     client : MCPClient
         MCP client for communicating with the server
     """
-    
+
     def __init__(self, client: MCPClient):
         """Initialize the MCP toolkit."""
         self.client = client
-    
+
     async def create_agent_from_model(
         self,
         name: str,
@@ -66,22 +68,22 @@ class MCPToolKit:
         A_list = [a.tolist() if isinstance(a, np.ndarray) else a for a in A]
         B_list = [b.tolist() if isinstance(b, np.ndarray) else b for b in B]
         C_list = [c.tolist() if isinstance(c, np.ndarray) else c for c in C]
-        
+
         # Create model dictionary
         model = {
             "A": A_list,
             "B": B_list,
             "C": C_list
         }
-        
+
         # Add D matrices if provided
         if D is not None:
             D_list = [d.tolist() if isinstance(d, np.ndarray) else d for d in D]
             model["D"] = D_list
-        
+
         # Create agent
         return await self.client.create_agent(name, model)
-    
+
     async def create_gridworld_agent(
         self,
         name: str,
@@ -110,10 +112,10 @@ class MCPToolKit:
             "grid_size": grid_size,
             "reward_positions": reward_positions
         }
-        
+
         result = await self.client.call_tool("create_gridworld_agent", params)
         return result.get("agent", {})
-    
+
     async def create_gridworld_environment(
         self,
         name: str,
@@ -142,17 +144,17 @@ class MCPToolKit:
             "grid_size": grid_size,
             "reward_locations": reward_positions
         }
-        
+
         # Create environment
         result = await self.client.call_tool("create_environment", params)
         env = result.get("result", {})
-        
+
         # Ensure environment has an ID
         if "id" not in env and "error" not in env:
             env["id"] = name
-            
+
         return env
-    
+
     async def create_custom_environment(
         self,
         name: str,
@@ -188,17 +190,17 @@ class MCPToolKit:
             "transitions": transitions,
             "rewards": rewards
         }
-        
+
         # Create environment
         return await self.client.create_environment(name, "custom", params)
-    
+
     async def run_simulation(
-        self, 
-        agent_id: str, 
-        env_id: str, 
-        num_steps: int = 10, 
-        save_history: bool = True, 
-        planning_horizon: Optional[int] = None, 
+        self,
+        agent_id: str,
+        env_id: str,
+        num_steps: int = 10,
+        save_history: bool = True,
+        planning_horizon: Optional[int] = None,
         output_dir: Optional[str] = None
     ) -> Dict[str, Any]:
         """Run a simulation with an agent in an environment.
@@ -230,23 +232,23 @@ class MCPToolKit:
             "num_steps": num_steps,
             "save_history": save_history
         }
-        
+
         # Add optional parameters
         if planning_horizon is not None:
             params["planning_horizon"] = planning_horizon
-        
+
         if output_dir:
             params["output_dir"] = output_dir
-        
+
         # Call the tool
         result = await self.client.call_tool("run_simulation", params)
-        
+
         # Extract the result from the response if needed
         if isinstance(result, dict) and "result" in result:
             return result["result"]
-        
+
         return result
-    
+
     async def visualize_agent_model(
         self,
         agent_id: str,
@@ -273,12 +275,12 @@ class MCPToolKit:
         params = {}
         if output_file is not None:
             params["output_file"] = output_file
-        
+
         result = await self.client.visualize_agent(agent_id, format, params)
-        
+
         # Return file path
         return result.get("file", "")
-    
+
     async def visualize_simulation(
         self,
         session_id: str,
@@ -314,16 +316,16 @@ class MCPToolKit:
         }
         if output_file is not None:
             params["output_file"] = output_file
-        
+
         result = await self.client.visualize_session(session_id, format, params)
-        
+
         # Return file paths
         files = result.get("files", {})
         if isinstance(files, list):
             return {"files": files}
         else:
             return files
-    
+
     async def analyze_free_energy(
         self,
         session_id: str,
@@ -349,10 +351,10 @@ class MCPToolKit:
         }
         if output_file is not None:
             params["output_file"] = output_file
-        
+
         result = await self.client.call_tool("analyze_free_energy", params)
         return result
-    
+
     async def plot_belief_dynamics(
         self,
         session_id: str,
@@ -378,10 +380,10 @@ class MCPToolKit:
         }
         if output_file is not None:
             params["output_file"] = output_file
-        
+
         result = await self.client.call_tool("plot_belief_dynamics", params)
         return result
-    
+
     async def validate_generative_model(
         self,
         model: Dict[str, List],
@@ -406,10 +408,10 @@ class MCPToolKit:
             "model": model,
             "check_normalization": check_normalization
         }
-        
+
         result = await self.client.call_tool("validate_generative_model", params)
         return result
-    
+
     async def compare_generative_models(
         self,
         model1: Dict[str, List],
@@ -434,16 +436,16 @@ class MCPToolKit:
             "model1": model1,
             "model2": model2
         }
-        
+
         result = await self.client.call_tool("compare_generative_models", params)
         return result
-    
+
     async def run_agent_in_environment(
-        self, 
-        agent_id: str, 
-        env_id: str, 
+        self,
+        agent_id: str,
+        env_id: str,
         num_steps: int = 10,
-        save_history: bool = True, 
+        save_history: bool = True,
         output_dir: Optional[str] = None
     ) -> Dict[str, Any]:
         """Run an agent in an environment (alias for run_simulation).
@@ -472,4 +474,4 @@ class MCPToolKit:
             num_steps=num_steps,
             save_history=save_history,
             output_dir=output_dir
-        ) 
+        )
