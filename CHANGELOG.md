@@ -1,0 +1,56 @@
+# Changelog
+
+All notable changes to `pymcp` (package `pymdp-mcp`) are documented here.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/).
+
+## [1.0.3] - 2026-08-01
+
+### Added
+- Missing `PyMDPInterface` methods that the servers/tools depend on:
+  `visualize_simulation`, `get_all_agents`, `get_all_environments`,
+  `get_all_simulations`, `visualize_agent_model`. The corresponding MCP tools and
+  FastAPI endpoints no longer error.
+- `run_simulation` now returns a `timesteps` list (one entry per step with
+  `observation`, `state`, `action`) plus a `history` and stable `simulation_id`.
+- `step_environment` returns a tracked `position` for grid-world environments.
+- Learning configuration (`learn_A`, `learn_B`, `pA`, `pB`, …) is now honored at
+  agent construction.
+- New docs: `docs/ARCHITECTURE.md`; visual/Mermaid diagrams in the README and
+  docs.
+
+### Changed
+- **Rewritten for the current PyMDP (immutable/equinox, batched) API.** Agents
+  are configured at construction time; observations and priors use the batched
+  one-hot convention; `infer_policies`/`sample_action` take the posterior/policy
+  posterior. **Full test suite is green (54 tests).**
+- Declared the real runtime dependency `inferactively-pymdp>=1.0.3` in
+  `pyproject.toml` and removed all phantom `pymdp-clone` references.
+- `src/main.py` now actually starts the MCP server when run; the FastMCP SSE
+  server is loop-safe (`uvicorn.Server.serve()`).
+- Docs rewritten to a single coherent README; fabricated tool documentation
+  (`enable_jax`, `run_tmaze_example`, …) pruned.
+- Version bumped `0.1.0` → `1.0.3`.
+
+### Security
+- FastAPI CORS restricted (no wildcard + credentials); env-configurable.
+- HTTP `visualize_simulation` `output_file` is confined to a fixed output dir
+  (path-traversal closed).
+- Replaced shell-string `os.system` test runner with `subprocess` arg-list.
+
+### Fixed
+- `step_environment` could never reach dict-gridworld `env["step"]` (unreachable
+  dead branch) — inline stepping now works.
+- `create_agent` returned a cryptic `NameError` for empty `A`/`B` — now a clear
+  validation error.
+- `_normalize_A_matrix` produced invalid all-zero columns for degenerate input.
+- `reward_positions` out-of-range values silently wrapped — now bounds-checked.
+
+### Removed
+- Git-tracked build/test artifacts (`tests/output/**`, `server.log`,
+  `src/pymdp_mcp.egg-info/`) — now gitignored.
+
+## [0.1.0] - 2025
+
+Initial release (template-era snapshot). Pre-1.0 development state; no
+semantic-version compatibility guarantees.

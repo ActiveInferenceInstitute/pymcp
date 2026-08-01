@@ -1,144 +1,204 @@
-# pymcp (pymdp-mcp)
+# 🧠 PyMCP — MCP + REST for PyMDP Active Inference
 
-**A Model Context Protocol (MCP) server and HTTP API for the PyMDP active inference library.**
+**Expose the [PyMDP](https://github.com/infer-actively/pymdp) active-inference
+library to AI agents and applications over the Model Context Protocol (MCP)
+and a plain REST API.**
 
-`pymcp` exposes the discrete-state-space active inference framework
-[PyMDP](https://github.com/infer-actively/pymdp) through two clean interfaces:
+[![Python](https://img.shields.io/badge/Python-%3E%3D3.8-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![PyMDP](https://img.shields.io/badge/PyMDP-1.0.3-blue)](#)
+[![MCP](https://img.shields.io/badge/MCP-SSE%20%2F%20stdio-4B32C3)](#)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Active Inference Institute](https://img.shields.io/badge/Active%20Inference-Institute-8A2BE2)](#)
 
-1. **MCP tools** — declared in `src/main.py` over the FastMCP framework
-   (`src/mcp/server/fastmcp.py`), which speaks the Model Context Protocol over
-   SSE or stdio so any MCP-compatible client (Claude Desktop, Windsurf, etc.) can
-   create agents, run inference, and simulate environments.
-2. **A FastAPI HTTP server** — `src/mcp/server/app.py`, which serves the same
-   capabilities as a plain REST API (`/ping`, `/tools`, `/agents`,
-   `/environments`, `/sessions`, …) over uvicorn.
-
-Both are thin wrappers around the `PyMDPInterface` class in `src/mcp/utils.py`,
-which calls the real, unmodified PyMDP library — there are no mock or simplified
-implementations, and results are identical to using PyMDP directly.
+`pymcp` gives any MCP-compatible client (Claude Desktop, Windsurf, …) — or any
+REST caller — direct, reproducible access to PyMDP's discrete-state-space
+active inference engine: build generative models, create agents, infer hidden
+states and policies (free-energy minimization), and simulate agents in
+environments. There are **no mock or simplified implementations**: every call
+goes straight to the real PyMDP library and returns results identical to using
+PyMDP directly.
 
 ---
 
-## Overview
+## Architecture
 
-| Package | `pymdp-mcp` (source layout under `src/mcp/`) |
-| --- | --- |
-| Python | `>=3.8` |
-| Active inference engine | [PyMDP](https://github.com/infer-actively/pymdp) (pip package `inferactively-pymdp`) |
-| Protocol | Model Context Protocol (SSE / stdio) + REST (FastAPI) |
-| License | MIT |
+```mermaid
+flowchart LR
+    subgraph Clients
+        A["MCP Client<br/>(Claude, Windsurf, …)"]
+        B["REST Client / curl"]
+    end
 
-The `PyMDPInterface` keeps in-memory registries of **agents**, **environments**,
-and **simulation history**, and converts between JSON payloads and PyMDP's NumPy
-object arrays so every tool takes plain JSON in and returns plain JSON out.
+    subgraph Servers
+        C["FastMCP (SSE / stdio)<br/>src/main.py · src/mcp/server/fastmcp.py"]
+        D["FastAPI (HTTP)<br/>src/mcp/server/app.py"]
+    end
+
+    subgraph Core
+        E["PyMDPInterface<br/>src/mcp/utils.py"]
+    end
+
+    subgraph Engine
+        F["PyMDP<br/>pymdp.agent · pymdp.maths ..."]
+    end
+
+    A -- "MCP (JSON)" --> C
+    B -- "REST (JSON)" --> D
+    C -- "tool calls" --> E
+    D -- "tool calls" --> E
+    E -- "real PyMDP API" --> F
+    F --> E
+```
+
+**Both servers are thin wrappers around one core class**, `PyMDPInterface`, so
+MCP and REST behave identically — the same tool in, the same JSON out.
+
+---
+
+## Key features
+
+- **Model Context Protocol** — `@mcp.tool()` tools delivered over **SSE** or
+  **stdio**, auto-discoverable by any MCP client.
+- **REST API** — a FastAPI server (`/ping`, `/tools`, `/agents`,
+  `/environments`, `/sessions`, …) for HTTP callers.
+- **Full active-inference loop** — `create_agent` → `infer_states` →
+  `infer_policies` → `sample_action` → `step_environment`, or end-to-end via
+  `run_simulation`.
+- **Grid-world environments** — create spatial environments with rewards and
+  simulate navigation.
+- **Visualization** — belief dynamics, policy posteriors, free-energy traces,
+  and generative-model plots (PNG + JSON companions).
+- **JSON in / JSON out** — inputs and outputs are plain JSON (NumPy/JAX values
+  are converted automatically), so it is trivial to call from any language.
+
+---
 
 ## Installation
-
-### 1. Install this package
 
 Using [uv](https://docs.astral.sh/uv/):
 
 ```bash
+# 1. Install this package (fastapi, uvicorn, numpy, matplotlib, aiohttp, ...)
 uv pip install -e .
-```
 
-This installs the `pymcp` server/client code and its runtime dependencies
-(FastAPI, uvicorn, numpy, matplotlib, aiohttp, …).
-
-### 2. Install PyMDP
-
-PyMDP is **not** bundled as a dependency, so you must install it separately:
-
-```bash
+# 2. Install the PyMDP engine
 uv pip install inferactively-pymdp
 ```
 
-> The package talks to the PyMDP library through its public API
-> (`pymdp.agent.Agent`, `pymdp.envs.Env`, `pymdp.utils`, `pymdp.maths`). There is
-> no vendored `pymdp-clone` directory in this repository.
+> PyMDP is already declared as a dependency in `pyproject.toml`
+> (`inferactively-pymdp>=1.0.3`), and step 2 just makes the engine explicit.
+> There is **no vendored `pymdp-clone`** in this repository — the interface talks
+> to the installed PyMDP package through its public API.
 
-## Quickstart (using the interface directly)
+---
 
-The quickest way to get a feel for the API is through `PyMDPInterface` directly:
+## Quickstart (interface directly)
 
 ```python
 from mcp.utils import PyMDPInterface
 
 pymdp = PyMDPInterface()
 
-# A minimal generative model with 1 hidden state and 2 observations
-model = pymdp.define_generative_model(
-    A_dims=[[2, 3]],        # one observation modality: [obs_dim, state_dim]
-    B_dims=[[3, 3, 2]],     # one state factor: [state_to, state_from, action_dim]
-)
+# Build a generative model: 1 observation modality [obs, state], 1 control factor
+model = pymdp.define_generative_model(A_dims=[[2, 3]], B_dims=[[3, 3, 2]])
 
 # Create an agent from that model
 pymdp.create_agent("agent_1", model)
 
-# Create a 3x3 grid world with a reward in the corner
-env = pymdp.create_grid_world_env("world_1", [3, 3], [[2, 2]])
-print(env)
+# Create a 3x3 grid world with a reward in the bottom-right
+pymdp.create_grid_world_env("world_1", [3, 3], [[2, 2]])
 
-# Step through a short simulation
+# Simulate the agent for 5 steps
 result = pymdp.run_simulation("agent_1", "world_1", num_steps=5)
-print(result)
+print(result["timesteps"])
 ```
+
+### The active-inference loop
+
+```mermaid
+sequenceDiagram
+    participant App as Your app / MCP client
+    participant I as PyMDPInterface
+    participant A as PyMDP Agent
+    participant E as Environment
+
+    App->>I: create_agent(name, {A, B, C, D})
+    I->>A: new Agent(...)
+    App->>I: infer_states(agent, observation)
+    I->>A: infer_states(obs, prior)
+    A-->>I: posterior q(s)
+    App->>I: infer_policies(agent)
+    I->>A: infer_policies(qs)
+    A-->>I: q(pi) + expected free energy
+    App->>I: sample_action(agent)
+    I->>A: sample_action(q_pi)
+    A-->>I: action
+    App->>I: step_environment(env, action)
+    I->>E: step(action)
+    E-->>I: observation + reward
+```
+
+---
 
 ## The `PyMDPInterface` methods
 
-All MCP tools and HTTP endpoints are thin wrappers over these methods.
+Every MCP tool and HTTP endpoint is a thin wrapper over one of these:
 
 | Method | Description |
 | --- | --- |
-| `create_agent(name, generative_model)` | Create an active inference agent from a generative model dict (`A`, `B`, optional `C`, `D`). |
-| `define_generative_model(A_dims, B_dims)` | Build random `A`/`B` matrices (plus default `C`, `D`) from dimension lists. |
-| `create_gridworld_agent(name, grid_size, reward_positions, ...)` | Create a gridworld agent with position + reward observation models. |
+| `create_agent(name, generative_model)` | Create an active inference agent from a model dict (`A`, `B`, optional `C`, `D`). |
+| `define_generative_model(A_dims, B_dims)` | Build random `A`/`B` matrices + default `C`/`D` from dimension lists. |
+| `create_gridworld_agent(name, grid_size, reward_positions, ...)` | Gridworld agent with position + reward observation models. |
 | `create_grid_world_env(name, grid_size, reward_positions)` | Create a grid world environment with rewards. |
-| `infer_states(agent_id, observation, method="FPI")` | Infer hidden-state posterior beliefs for an observation (FPI, BP, …). |
-| `infer_policies(agent_id, planning_horizon=None)` | Optimize beliefs over policies via expected free energy. |
-| `sample_action(agent_id, planning_horizon=None)` | Sample an action from the policy posterior. |
+| `infer_states(agent_id, observation, method="FPI")` | Infer hidden-state posterior for an observation (FPI, BP, …). |
+| `infer_policies(agent_id)` | Optimize beliefs over policies via expected free energy. |
+| `sample_action(agent_id)` | Sample an action from the policy posterior. |
 | `step_environment(env_id, action)` | Advance an environment given an action. |
 | `run_simulation(agent_id, env_id, num_steps=10, ...)` | Run a full agent–environment simulation loop. |
 | `reset_environment(env_id)` | Reset an environment to its initial state. |
 | `get_agent(name)` / `get_environment(name)` | Retrieve stored agents/environments as JSON. |
-| `get_all_functions()` | List all public methods available on the interface. |
+| `get_all_agents()` / `get_all_environments()` / `get_all_simulations()` | List stored resources. |
+| `get_all_functions()` | List all public methods on the interface. |
 
-Additional helpers exist in `utils.py` (e.g. `validate_generative_model`,
-`calculate_free_energy`, `infer_states_from_observation`, `get_all_agents`,
-`get_all_simulations`) and visualization methods (`visualize_belief_dynamics`,
-`plot_belief_dynamics`, `analyze_free_energy`) are attached by
-`src/mcp/visualization/extensions.py`. See the docs for details.
+Additional helpers include `validate_generative_model`,
+`calculate_free_energy`, `infer_states_from_observation`, and visualization
+methods (`visualize_simulation`, `visualize_belief_dynamics`,
+`visualize_agent_model`) — see [`docs/`](docs/).
+
+---
 
 ## Server run modes
 
-There are two independent servers in this repository.
+There are two independent servers.
 
-### 1. FastAPI HTTP server (`src/mcp/server/app.py`)
+### 1. MCP server (`src/main.py` + `src/mcp/server/fastmcp.py`)
 
-Serves the interface as a REST API. Run it with uvicorn:
+```bash
+TRANSPORT=sse uv run src/main.py      # SSE (default)
+TRANSPORT=stdio uv run src/main.py    # stdio
+```
+
+### 2. FastAPI HTTP server (`src/mcp/server/app.py`)
 
 ```bash
 uvicorn mcp.server.app:app
 ```
 
-The module exposes `app = create_app()` at import time, so any uvicorn invocation
-works. Endpoints include:
-
-- `GET /ping` — health check
-- `GET /tools`, `POST /tools/{tool_id}` — list and invoke tools
-- `GET /agents`, `GET /agents/{agent_id}` — list/retrieve agents
-- `GET /environments`, `POST /environments`, `GET /environments/{env_id}` — manage environments
-- `GET /simulations`, `POST /sessions`, `POST /sessions/{id}/run` — run and inspect simulations
-- `/agents/{id}/visualize`, `/sessions/{id}/visualize`, `/analyze/free_energy/{id}`, `/analyze/beliefs/{id}` — analysis and visualization
-
-### 2. MCP server (`src/main.py` + `src/mcp/server/fastmcp.py`)
-
-The MCP tools are declared in `src/main.py` using the bundled FastMCP
-implementation. It supports two transports:
-
-- **SSE** (default) — exposes `/schema`, `/tools`, `/invoke`, and `/sse`.
-- **stdio** — reads JSON requests on stdin and writes responses to stdout, so an
-  MCP client can launch the server itself.
+```mermaid
+flowchart TB
+    subgraph MCP["MCP server (SSE / stdio)"]
+        M1["/schema"] --> M2["/tools"]
+        M2 --> M3["/invoke"]
+        M3 --> M4["/sse"]
+    end
+    subgraph REST["FastAPI server"]
+        R1["GET /ping"] --> R2["GET /tools ; POST /tools/{id}"]
+        R2 --> R3["/agents · /environments · /sessions"]
+        R3 --> R4["/ ... /visualize"]
+    end
+    Core["PyMDPInterface"] -. called by all .-> MCP
+    Core -. called by all .-> REST
+```
 
 ### Configuration environment variables
 
@@ -147,29 +207,35 @@ implementation. It supports two transports:
 | `HOST` | `0.0.0.0` | Host to bind (SSE server). |
 | `PORT` | `8050` | Port to listen on (SSE server). |
 | `TRANSPORT` | `sse` | Transport: `sse` or `stdio`. |
+| `CORS_ORIGINS` | `http://localhost:8080,http://127.0.0.1:8080` | Allowed origins for the FastAPI server. |
+| `MCP_OUTPUT_DIR` | `./output` | Directory where visualization files are written (path-traversal safe). |
+
+---
 
 ## Testing
-
-The test suite lives under `tests/` and is configured in `pyproject.toml`
-(`testpaths = ["tests"]`, `python_files = "test_*.py"`). Run it with pytest:
 
 ```bash
 pytest
 ```
 
-The tests exercise the `PyMDPInterface` directly and through the MCP layer, and
-verify that the interface reproduces the results of direct PyMDP calls. Outputs
-and plots are written under `tests/output/`.
+The suite (54 tests) exercises `PyMDPInterface` directly **and** through the MCP
+layer, verifying that the interface reproduces direct PyMDP results exactly.
+Plots and artifacts are written under `tests/output/`.
+
+---
 
 ## Documentation
 
-See the [`docs/`](docs/) directory for detailed guides:
-
+- [Docs index](docs/README.md)
+- [Architecture](docs/ARCHITECTURE.md)
 - [MCP & PyMDP integration](docs/mcp_pymdp_integration.md)
 - [MCP tools reference](docs/mcp_tools.md)
+- [PyMDP integration](docs/pymdp_integration.md)
 - [Implementation details](docs/implementation_details.md)
 - [Advanced features](docs/advanced_features.md)
-- [PyMDP integration](docs/pymdp_integration.md)
+- [Changelog](CHANGELOG.md)
+
+---
 
 ## Citation
 
@@ -189,6 +255,8 @@ If you use this project in research, please cite the underlying PyMDP library:
   journal = {Journal of Open Source Software}
 }
 ```
+
+---
 
 ## License
 

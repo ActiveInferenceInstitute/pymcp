@@ -5,7 +5,8 @@ repo:
   name: pymcp
   slug: pymcp
   full_name: ActiveInferenceInstitute/pymcp
-  description: PyMCP -- MCP for PyMDP
+  description: An MCP server and FastAPI backend for PyMDP active-inference agents — expose the PyMDP library to AI agents over Model Context Protocol (SSE/stdio) or REST.
+  about: An MCP server + HTTP API for PyMDP active inference. Create agents, run free-energy inference, and simulate environments from any MCP client or REST caller.
 institute:
   category: research-software
   steward: Active Inference Institute

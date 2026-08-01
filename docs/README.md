@@ -5,24 +5,27 @@ FastAPI HTTP API for the PyMDP active inference library.
 
 ## Contents
 
-1. **[MCP & PyMDP Integration](mcp_pymdp_integration.md)**
+1. **[Architecture](ARCHITECTURE.md)**
+   Module layout, request lifecycle, and design decisions — with diagrams.
+
+2. **[MCP & PyMDP Integration](mcp_pymdp_integration.md)**
    High-level overview of the project: what it is, its components, data flow,
    and how MCP tools map onto the `PyMDPInterface`.
 
-2. **[MCP Tools Reference](mcp_tools.md)**
+3. **[MCP Tools Reference](mcp_tools.md)**
    The complete set of real tools exposed by the servers — every method on
    `PyMDPInterface`, with signatures, parameters, and return values.
 
-3. **[Implementation Details](implementation_details.md)**
+4. **[Implementation Details](implementation_details.md)**
    Technical detail on the layered architecture: `PyMDPInterface`, the FastMCP
    server, the FastAPI server, JSON/NumPy serialization, and session handling.
 
-4. **[Advanced Features](advanced_features.md)**
+5. **[Advanced Features](advanced_features.md)**
    The capabilities that actually exist beyond the core loop: gridworld and
    custom environments, visualization/belief-dynamics, free-energy analysis,
    sessions, and direct vs. network clients.
 
-5. **[PyMDP Integration](pymdp_integration.md)**
+6. **[PyMDP Integration](pymdp_integration.md)**
    How this project integrates the PyMDP pip package (`inferactively-pymdp`)
    as an unmodified dependency, and how compatibility is verified.
 
