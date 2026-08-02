@@ -65,7 +65,7 @@ See [mcp_tools.md](mcp_tools.md) for the full reference.
 ## References
 
 - [PyMDP GitHub repository](https://github.com/infer-actively/pymdp)
-- [PyMDP documentation](https://pymdp.readthedocs.io/)
+- [PyMDP documentation](https://pymdp-rtd.readthedocs.io/en/latest/)
 - [Model Context Protocol specification](https://modelcontextprotocol.io)
 - Heins, C., Millidge, B., Demekas, D., Klein, B., Friston, K., Couzin, I. D., &
   Tschantz, A. (2022). pymdp: A Python library for active inference in discrete

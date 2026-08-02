@@ -38,13 +38,14 @@ FastAPI HTTP API for the PyMDP active inference library.
 ## Project Layout
 
 ```
-src/mcp/
-  utils.py                 # PyMDPInterface — the core integration layer
-  main.py                  # MCP tools over FastMCP (SSE / stdio)
-  server/app.py            # FastAPI HTTP server (uvicorn)
-  server/fastmcp.py        # Bundled FastMCP implementation
-  client.py, client/       # Network (MCPClient) and direct (DirectMCPClient) clients
-  environments/            # Grid-world and custom environment helpers
-  visualization/           # Model / free-energy / belief-dynamics visualization
+src/
+  main.py                  # MCP tools over FastMCP (SSE / stdio) — entry point
+  mcp/
+    utils.py               # PyMDPInterface — the core integration layer
+    server/app.py          # FastAPI HTTP server (uvicorn)
+    server/fastmcp.py      # Bundled FastMCP implementation
+    client.py, client/     # Network (MCPClient) and direct (DirectMCPClient) clients
+    environments/          # Grid-world and custom environment helpers
+    visualization/         # Model / free-energy / belief-dynamics visualization
 tests/                     # Test suite (run with pytest)
 ```

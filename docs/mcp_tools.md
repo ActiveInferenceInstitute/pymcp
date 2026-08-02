@@ -172,4 +172,4 @@ Visualization methods (`visualize_belief_dynamics`, `plot_belief_dynamics`,
 4. Results (NumPy object arrays) are converted to plain JSON via `NumpyEncoder`
    and `_convert_from_obj_array`, and returned to the client.
 
-For the full underlying PyMDP API, see the [PyMDP documentation](https://pymdp.readthedocs.io/).
+For the full underlying PyMDP API, see the [PyMDP documentation](https://pymdp-rtd.readthedocs.io/en/latest/).

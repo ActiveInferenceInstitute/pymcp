@@ -8,25 +8,27 @@ keep the MCP and REST surfaces consistent.
 
 ```mermaid
 flowchart TD
-    subgraph src["src/mcp"]
+    subgraph src["src/"]
         main["main.py<br/>entry point + @mcp.tool declarations"]
-        subgraph server["server/"]
-            fastmcp["fastmcp.py<br/>FastMCP framework (SSE/stdio)"]
-            app["app.py<br/>FastAPI REST server"]
+        subgraph mcp["mcp/"]
+            subgraph server["server/"]
+                fastmcp["fastmcp.py<br/>FastMCP framework (SSE/stdio)"]
+                app["app.py<br/>FastAPI REST server"]
+            end
+            utils["utils.py<br/>PyMDPInterface (the core)"]
+            subgraph envs["environments/"]
+                grid["gridworld.py"]
+                custom["custom.py"]
+            end
+            subgraph viz["visualization/"]
+                sim["simulation.py"]
+                fe["free_energy.py"]
+                gm["generative_model.py"]
+                ext["extensions.py"]
+            end
+            belief["belief_dynamics.py"]
+            client["client.py"] 
         end
-        utils["utils.py<br/>PyMDPInterface (the core)"]
-        subgraph envs["environments/"]
-            grid["gridworld.py"]
-            custom["custom.py"]
-        end
-        subgraph viz["visualization/"]
-            sim["simulation.py"]
-            fe["free_energy.py"]
-            gm["generative_model.py"]
-            ext["extensions.py"]
-        end
-        belief["belief_dynamics.py"]
-        client["client.py"] 
     end
 
     main --> fastmcp
