@@ -4,7 +4,7 @@
 library to AI agents and applications over the Model Context Protocol (MCP)
 and a plain REST API.**
 
-[![Python](https://img.shields.io/badge/Python-%3E%3D3.8-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-%3E%3D3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![PyMDP](https://img.shields.io/badge/PyMDP-1.0.3-blue)](#)
 [![MCP](https://img.shields.io/badge/MCP-SSE%20%2F%20stdio-4B32C3)](#)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -215,7 +215,7 @@ flowchart TB
 ## Testing
 
 ```bash
-pytest
+uv run python -m pytest tests/
 ```
 
 The suite (54 tests) exercises `PyMDPInterface` directly **and** through the MCP
@@ -233,6 +233,7 @@ Plots and artifacts are written under `tests/output/`.
 - [PyMDP integration](docs/pymdp_integration.md)
 - [Implementation details](docs/implementation_details.md)
 - [Advanced features](docs/advanced_features.md)
+- [Implementation status report](mcp_status_report.md)
 - [Changelog](CHANGELOG.md)
 
 ---
