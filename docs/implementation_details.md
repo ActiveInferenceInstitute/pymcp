@@ -30,8 +30,9 @@ def __init__(self):
 ```
 
 Agent creation normalizes the supplied `A`/`B` (and optional `C`/`D`) JSON into
-the NumPy object arrays PyMDP expects, then constructs a PyMDP `Agent` and stores
-it by name:
+the batched NumPy form the current PyMDP expects, then constructs a PyMDP
+`Agent` with all configuration passed at construction time (PyMDP agents are
+immutable equinox dataclasses) and stores it by name:
 
 ```python
 def create_agent(self, name, generative_model):
@@ -39,14 +40,21 @@ def create_agent(self, name, generative_model):
     B = generative_model.get("B", [])
     C = generative_model.get("C", None)
     D = generative_model.get("D", None)
-    # ... normalize A columns to sum to 1, B along each action ...
-    agent = Agent(A=A_obj, B=B_obj, C=C_obj, D=D_obj)
+    # ... normalize A columns to sum to 1, B along destination states ...
+    # ... add a leading batch dimension of 1 to every matrix (_to_batch) ...
+    agent = Agent(
+        A=A_b, B=B_b, C=C_b, D=D_b,
+        policy_len=..., num_controls=..., control_fac_idx=...,
+    )
     self.agents[name] = agent
     return {"name": name, "num_observation_modalities": ..., "num_state_factors": ...}
 ```
 
-Environment creation builds a step/reset environment (used for gridworld) and
-stores it in `self.environments`:
+Environment creation builds a JSON-serializable environment **dict** (grid
+size, reward positions, current state) and stores it in `self.environments`;
+step/reset behavior is implemented inline in `step_environment` /
+`reset_environment` (`_step_gridworld`), so environments carry no attached
+functions:
 
 ```python
 def create_grid_world_env(self, name, grid_size, reward_positions):
