@@ -4,6 +4,7 @@ __pycache__/
 .ruff_cache/
 *.egg-info/
 tests/output/
+tests/tests/
 server.log
 .DS_Store
 .mcp/
