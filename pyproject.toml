@@ -23,7 +23,7 @@ dependencies = [
     "inferactively-pymdp>=1.0.3",
     "fastapi>=0.95.0",
     "uvicorn>=0.22.0",
-    "pydantic>=1.10.7",
+    "pydantic>=2.13",
     "python-multipart>=0.0.6",
     "pillow>=9.0.0"
 ]
@@ -32,6 +32,9 @@ dependencies = [
 "Homepage" = "https://github.com/ActiveInferenceInstitute/pymcp"
 "Bug Tracker" = "https://github.com/ActiveInferenceInstitute/pymcp/issues"
 "Repository" = "https://github.com/ActiveInferenceInstitute/pymcp"
+
+[dependency-groups]
+dev = ["pytest", "ruff"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mcp"]
