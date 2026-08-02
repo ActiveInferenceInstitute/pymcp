@@ -23,9 +23,10 @@ display_help() {
     echo ""
 }
 
-# Parameters to pass to run_tests.py
-# Default to running all tests
-PARAMS="--organize --category all"
+# Parameters to pass to run_all_tests.py
+# Default to running all tests (run_all_tests.py organizes outputs by category
+# on its own; --organize is not an option it accepts)
+PARAMS="--category all"
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -66,20 +67,17 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Check if run_tests.py exists in parent directory
-if [ ! -f "../run_tests.py" ]; then
-    echo "Error: run_tests.py not found in parent directory"
+# Check if run_all_tests.py exists in the tests directory
+if [ ! -f "run_all_tests.py" ]; then
+    echo "Error: run_all_tests.py not found in tests directory"
     exit 1
 fi
 
 # Run the tests with the specified parameters
 echo "Running tests with parameters: $PARAMS"
 echo "Note: By default this runs ALL tests in ALL categories unless overridden with --category or --file"
-cd ..
-python3 run_tests.py $PARAMS
-
-# Return to the tests directory
-cd tests
+echo "Note: use the project virtualenv if 'python3' lacks the installed dependencies"
+python3 run_all_tests.py $PARAMS
 
 # Check if output directory exists
 if [ ! -d "output" ]; then
