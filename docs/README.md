@@ -29,6 +29,10 @@ FastAPI HTTP API for the PyMDP active inference library.
    How this project integrates the PyMDP pip package (`inferactively-pymdp`)
    as an unmodified dependency, and how compatibility is verified.
 
+7. **[Implementation Status Report](../mcp_status_report.md)**
+   A dated snapshot of the current state: what works, test status, and known
+   open items.
+
 ## Getting Started
 
 1. Install the package and PyMDP (see the root [`README.md`](../README.md)).
