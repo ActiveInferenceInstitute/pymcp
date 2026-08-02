@@ -1,57 +1,73 @@
 # MCP-PyMDP Example Scripts
 
-This directory contains various scripts for testing and demonstrating the MCP-PyMDP integration.
+This directory contains scripts for testing and demonstrating the PyMCP
+integration (MCP server + REST API over the PyMDP active inference library).
 
 ## Setup
 
-Before running any scripts, ensure you have installed the required dependencies:
+Install the package — including the PyMDP dependency, which is declared in
+`pyproject.toml` — from the repository root:
 
 ```bash
-pip install -r ../requirements.txt
+cd ..
+uv pip install -e .
 ```
 
-Also make sure that both the `src` directory and the `pymdp-clone` directory are in your Python path:
+When running a script directly, make sure the `src` directory is on your
+Python path:
 
 ```bash
-export PYTHONPATH=$PYTHONPATH:$(pwd)/../src:$(pwd)/../pymdp-clone
+export PYTHONPATH=$PYTHONPATH:$(pwd)/../src
 ```
+
+`scripts/setup_pymdp_path.py` does the same thing programmatically: import it
+at the top of your own script, or run it to print the path that will be added.
 
 ## Scripts Overview
 
 ### Server Scripts
 
-These scripts start the MCP server that provides PyMDP functionality:
+These scripts start a server that exposes PyMDP functionality:
 
-- `start_mcp_server.py`: Primary server script that implements the MCP protocol
-- `start_fastapi_server.py`: Alternative server implementation using FastAPI directly
+- `start_mcp_server.py`: Standalone server script (FastAPI-based; provides the
+  REST/tool surface for the example scripts). Note: it predates the current
+  `src/mcp/server/app.py` + `src/main.py` servers and overlaps with them.
+- `start_fastapi_server.py`: Alternative FastAPI server implementation.
 
 ### Example Scripts
 
-These scripts demonstrate various aspects of the PyMDP active inference framework:
+These scripts demonstrate various aspects of the PyMDP active inference
+framework:
 
-- `mcp_pymdp_example.py`: Basic PyMDP examples with simple agent-environment interactions
-- `mcp_gridworld_examples.py`: Detailed gridworld environment examples with visualizations
-- `pymcp_examples.py`: Comprehensive examples covering all core PyMDP functionalities
+- `mcp_pymdp_example.py`: Basic PyMDP examples with simple agent-environment
+  interactions.
+- `mcp_gridworld_examples.py`: Detailed gridworld environment examples with
+  visualizations.
+- `pymcp_examples.py`: Comprehensive examples covering the core PyMDP
+  functionality.
+- `pymcp_examples_fixed.py`: Maintained variant of `pymcp_examples.py`
+  (updated client usage); this is the script `run_all_examples.py` runs.
 
 ### Test Scripts
 
 These scripts are for testing the MCP server and PyMDP integration:
 
-- `test_server.py`: Basic connectivity tests for the MCP server
-- `test_agent.py`: Direct PyMDP agent testing without MCP interface
-- `test_mcp_pymdp.py`: Tests for the MCP-PyMDP integration layer
+- `test_server.py`: Basic connectivity tests for the server.
+- `test_agent.py`: Direct PyMDP agent testing without the MCP interface.
+- `test_mcp_pymdp.py`: Tests for the MCP-PyMDP integration layer.
 
 ### Utility Scripts
 
-These scripts provide utilities and configuration:
-
-- `setup_pymdp_path.py`: Utility to set up the correct Python paths
-- `run_with_server.sh`: Shell script to run an example with automatic server management
-- `run_all_examples.py`: Python script to run all examples in sequence with server management
+- `setup_pymdp_path.py`: Utility to set up the correct Python path.
+- `run_with_server.sh`: Shell script to run an example with automatic server
+  management.
+- `run_all_examples.py`: Python script to run all examples in sequence with
+  server management.
 
 ## Running the Examples
 
-**Important: All scripts must be run using `python3` (not `python`).**
+**Important: run the scripts with the repository's virtualenv Python
+(`uv run python ...`) or `python3` (not `python`).**
 
 ### Method 1: Using the run_with_server.sh script
 
@@ -78,11 +94,13 @@ python3 run_all_examples.py
 ### Method 3: Manual server and example execution
 
 1. Start the server:
+
 ```bash
 python3 start_mcp_server.py --port 8080
 ```
 
 2. In another terminal, run an example:
+
 ```bash
 python3 mcp_gridworld_examples.py --port 8080
 ```
@@ -95,13 +113,23 @@ All scripts create timestamped output directories that contain:
 - PNG visualizations of agents, environments, and simulations
 - Log files with detailed execution information
 
+## A note on example outputs
+
+Some example scripts (`mcp_gridworld_examples.py`, `start_mcp_server.py`) plot
+free-energy traces that are **generated with `np.random`** when no measured
+trace is available in the session history. These traces are **synthetic /
+illustrative** — they are labeled as such in the code and on the plots, and
+must not be presented as measured analysis output.
+
 ## Recommended Execution Order
 
 For first-time users, we recommend running scripts in this order:
 
-1. `test_server.py` - Verify server functionality
-2. `mcp_pymdp_example.py` - Understand basic agent-environment interaction
-3. `mcp_gridworld_examples.py` - Explore gridworld environments in detail
-4. `pymcp_examples.py` - Explore advanced PyMDP functionality
+1. `test_server.py` — Verify server functionality
+2. `mcp_pymdp_example.py` — Understand basic agent-environment interaction
+3. `mcp_gridworld_examples.py` — Explore gridworld environments in detail
+4. `pymcp_examples.py` / `pymcp_examples_fixed.py` — Explore advanced PyMDP
+   functionality
 
-Or simply run `run_all_examples.py` to execute them all in the correct sequence. 
+Or simply run `run_all_examples.py` to execute them all in the correct
+sequence.

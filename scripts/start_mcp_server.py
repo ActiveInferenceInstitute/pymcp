@@ -1182,7 +1182,9 @@ async def analyze_free_energy(session_id: str, output_file: Optional[str] = None
             }
 
         # Generate mock free energy values
-        # In a real implementation, this would calculate actual free energy
+        # SYNTHETIC / ILLUSTRATIVE ONLY: no measured free-energy trace is
+        # available here, so a fake decreasing trace is drawn. This is not
+        # measured analysis output.
         timesteps = len(history)
         free_energy = np.random.random(timesteps) * -2  # Random negative values
         free_energy.sort()  # Sort for a decreasing trend
@@ -1190,7 +1192,7 @@ async def analyze_free_energy(session_id: str, output_file: Optional[str] = None
         # Create figure
         plt.figure(figsize=(10, 6))
         plt.plot(range(timesteps), free_energy, 'r-', linewidth=2)
-        plt.title(f'Free Energy Analysis - Session: {session_id}')
+        plt.title(f'Free Energy Analysis (illustrative sample) - Session: {session_id}')
         plt.xlabel('Timestep')
         plt.ylabel('Free Energy')
         plt.grid(True)

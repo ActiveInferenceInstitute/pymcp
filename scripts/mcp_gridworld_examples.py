@@ -549,6 +549,9 @@ def generate_free_energy_visualization(simulation, output_file):
             plt.plot(timesteps, fe_values, 'r-', linewidth=2)
         else:
             # Generate sample free energy values
+            # SYNTHETIC / ILLUSTRATIVE ONLY: no measured free-energy trace is
+            # available, so a fake decreasing trace is drawn (labeled
+            # "Simulated free energy values" on the plot). Not measured output.
             # Decreasing values indicate optimization
             timesteps = len(history)
             free_energy = np.random.random(timesteps) * -2  # Random negative values
@@ -559,6 +562,8 @@ def generate_free_energy_visualization(simulation, output_file):
             plt.text(timesteps/2, -1.0, "Simulated free energy values", ha='center', fontsize=10, alpha=0.7)
     else:
         # Sample free energy if no history
+        # SYNTHETIC / ILLUSTRATIVE ONLY: same as above; labeled "Simulated
+        # data" on the plot. Not measured output.
         timesteps = 10
         free_energy = np.linspace(-0.5, -2.0, timesteps)
 
