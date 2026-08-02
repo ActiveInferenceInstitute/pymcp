@@ -1,7 +1,7 @@
 """
-MCP-PyMDP - Message-based Cognitive Protocol for Active Inference with PyMDP.
+MCP-PyMDP - Model Context Protocol for Active Inference with PyMDP.
 
-This package provides a server and client implementation for the Message-based Cognitive Protocol (MCP)
+This package provides a server and client implementation for the Model Context Protocol (MCP)
 using the PyMDP active inference framework.
 
 The package includes the following components:
@@ -13,7 +13,7 @@ The package includes the following components:
 """
 
 # Version information
-__version__ = "0.1.0"
+__version__ = "1.0.3"
 
 # Import client components
 from .client import MCPClient, MCPToolKit, get_server_url, load_config, save_config

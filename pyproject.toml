@@ -8,9 +8,9 @@ version = "1.0.3"
 authors = [
   { name="MCP-PyMDP Contributors", email="contact@example.com" },
 ]
-description = "Message-based Cognitive Protocol for Active Inference with PyMDP"
+description = "Model Context Protocol (MCP) and REST interface for PyMDP active inference"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.12"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -44,16 +44,11 @@ filterwarnings = [
     "ignore::UserWarning"
 ]
 
-[tool.black]
-line-length = 88
-target-version = ['py38', 'py39', 'py310']
-include = '\.pyi?$'
-
 [tool.ruff]
 select = ["E", "F", "W", "I"]
 ignore = ["E501"]
 line-length = 88
-target-version = "py38"
+target-version = "py312"
 fix = true
 unfixable = ["F401"]
 

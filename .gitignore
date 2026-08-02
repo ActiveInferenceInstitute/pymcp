@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 .venv/
+.ruff_cache/
 *.egg-info/
 tests/output/
 server.log
