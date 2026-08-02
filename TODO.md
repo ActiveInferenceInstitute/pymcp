@@ -2,86 +2,136 @@
 
 Status:      OPEN — suite GREEN (54 passed / 0 failed against inferactively-pymdp 1.0.3)
 Owner:       Daniel Ari Friedman (Active Inference Institute)
-Last reviewed: 2026-08-01
+Last reviewed: 2026-08-02 (docs-deep pass — see REVIEW_LOG_2026-08-02.md)
 
-## Current status (measured 2026-08-01, after the full fix-and-push pass)
+## Sections
 
-- The package now imports, builds, and serves. The real runtime dependency is
-  declared (`inferactively-pymdp>=1.0.3`) in `pyproject.toml`; all phantom
-  `pymdp-clone` path-inserts were removed (src, tests, scripts).
-- `PyMDPInterface` was rewritten for the current (immutable/equinox, batched)
-  PyMDP API. The full suite passes: **54 passed / 0 failed** against
-  `inferactively-pymdp` 1.0.3 (Python 3.14 venv).
-- The documented entry point is real: `uv run src/main.py` starts the MCP
-  server (SSE via `TRANSPORT`, `HOST`, `PORT`; stdio via `TRANSPORT=stdio`).
-  The FastMCP `run_sse` was made loop-safe (`uvicorn.Server.serve()`).
-- Docs were rewritten to a single coherent README; fabricated tool documentation
-  (`enable_jax`, `run_tmaze_example`, …) was pruned and explicitly marked as
-  non-existent.
-- Security: FastAPI CORS defaulted to local origins (env-configurable) with no
-  wildcard+credentials; HTTP `visualize_simulation` `output_file` is confined to
-  a fixed output dir (path-traversal closed).
-- Lint: `ruff check --fix src/ scripts/` reduced errors from 2366 to ~371
-  (remaining are mostly unused imports F401, config-marked unfixable, and
-  whitespace inside code — cosmetic, not a gate).
+- **Minor** — typo, broken link, formatting, small metadata fix.
+- **Medium** — stale section rewrite, doc restructure, added missing guide,
+  broken helper repair.
+- **Major** — large doc system overhaul, cross-cutting refactors, deferred
+  code work.
 
-## Completed / Closed (2026-08-01)
+---
 
-- [x] **PyMDP dependency declared + phantom `pymdp-clone` removed (MAJOR-1).**
-  Added `inferactively-pymdp>=1.0.3` to `pyproject.toml`; removed every
-  `pymdp-clone` reference across `src/`, `tests/`, and `scripts/`
-  (`setup_pymdp_path.py` now adds only `src/`).
-- [x] **PyMDP API drift fixed — suite green (MAJOR-2).** Rewrote
-  `PyMDPInterface` (create_agent construction params, batched one-hot
-  observations, `infer_states(obs, prior)`, `infer_policies(qs)`,
-  `sample_action(q_pi)`, B normalization over destination states) and adapted
-  the tests that called the old mutable API. **54/54 pass.**
-- [x] **Missing interface methods added (MAJOR-3).** Implemented
-  `visualize_simulation`, `get_all_agents`, `get_all_environments`,
-  `get_all_simulations`, `visualize_agent_model` (server endpoints/tools no
-  longer 500).
-- [x] **Working entry point (MAJOR-4, part 1).** `main()` now runs the MCP
-  server; `run_sse` is loop-safe; `TRANSPORT`/`HOST`/`PORT` honored.
-- [x] **Docs consolidation (MAJOR-5).** Single coherent README; fabricated tool
-  docs pruned; version/port/file references reconciled; `.aii` DOI fixed.
-- [x] **HTTP security (MAJOR-6, part 1).** CORS restricted; `output_file`
-  path-traversal closed in `app.py`.
-- [x] **Minor/Medium batch from the 2026-08-01 review:** shell-injection
-  `os.system`→`subprocess` in `main.py`; `step_environment` dict-env branch;
-  `create_agent` empty-A/B validation; `_normalize_A_matrix` degenerate
-  columns; `reward_positions` bounds check; `.gitignore` hygiene; dead
-  `agent[...]()` branches; `simulation_id` refactor; `pyproject.urls`; `.aii`
-  DOI. All probe/regression verified.
+## Minor — completed this pass (2026-08-02)
 
-## Open / remaining (scoped, still TODO)
+- [x] ✓ **Dead external link.** `https://pymdp.readthedocs.io/` returns 404;
+  the PyMDP docs moved to `https://pymdp-rtd.readthedocs.io/en/latest/`
+  (verified). Files: `docs/mcp_tools.md`, `docs/mcp_pymdp_integration.md`.
+  Commit `3ffa020`.
+- [x] ✓ **Project-layout path error.** `docs/README.md` placed `main.py`
+  inside `src/mcp/`; it lives at `src/main.py` (sibling of `src/mcp/`).
+  Commit `3ffa020`.
+- [x] ✓ **Architecture-diagram path error.** `docs/ARCHITECTURE.md` module
+  diagram showed `main.py` under `src/mcp/`; corrected to `src/main.py`.
+  Commit `3ffa020`.
+- [x] ✓ **Stale `__version__`.** `src/mcp/__init__.py` said `0.1.0` while the
+  package is `1.0.3`. Commit `01124e7`.
+- [x] ✓ **Stale terminology.** "Message-based Cognitive Protocol" → "Model
+  Context Protocol" in `pyproject.toml` description and `src/mcp/__init__.py`
+  docstring. Commit `01124e7`.
+- [x] ✓ **`requires-python` mismatch.** `>=3.8` was inconsistent with the
+  resolved `uv.lock` (`>=3.12`) and the `inferactively-pymdp>=1.0.3` floor;
+  `uv run` could not resolve. Aligned to `>=3.12`; README Python badge and
+  ruff `target-version` updated. Files: `pyproject.toml`, `README.md`.
+  Commits `01124e7`, `72e1d88`.
+- [x] ✓ **Wrong `uv.lock`.** The committed lock was a template-era artifact
+  listing unrelated packages (`mem0ai`, `openai`, `qdrant-client`, …) and
+  missing the real deps (`inferactively-pymdp`, `fastapi`, `matplotlib`,
+  `aiohttp`, `jax`, `equinox`). Regenerated to match `pyproject.toml`; raised
+  the `pydantic` floor to `>=2.13` so `pydantic-core` resolves to a build with
+  Python 3.14 wheels (`uv sync` verified). Files: `uv.lock`, `pyproject.toml`.
+  Commits `01124e7`, `27a982e`.
+- [x] ✓ **Missing dev dependencies.** `uv sync` produced an environment
+  without `pytest` — the documented test command could not run on a clean
+  checkout. Added `[dependency-groups] dev = ["pytest", "ruff"]`. Files:
+  `pyproject.toml`, `uv.lock`. Commit `27a982e`.
+- [x] ✓ **README test command.** Bare `pytest` → canonical
+  `uv run python -m pytest tests/`. Commit `72e1d88`.
+- [x] ✓ **Gitignore hygiene.** `.ruff_cache/` (present at root) added to
+  `.gitignore`. Commit `01124e7`.
 
-- [ ] **Server consolidation (MAJOR-4, part 2).** Three parallel servers remain:
-  `src/mcp/server/app.py` (FastAPI REST), `src/main.py` + hand-rolled
-  `src/mcp/server/fastmcp.py` (MCP), and `scripts/start_mcp_server.py`
-  (1412-line near-duplicate of app.py). Unify to one MCP server on the real
-  `mcp`/FastMCP SDK and one thin FastAPI wrapper; delete or thin the duplicate.
-  Affects `src/main.py`, `src/mcp/server/*`, `scripts/start_mcp_server.py`.
-- [ ] **Resource caps (MAJOR-6, part 2).** `define_generative_model`,
-  `create_gridworld_agent`, and `run_simulation` accept unbounded
-  dimensions/grid/step-counts from JSON input → potential OOM on malicious or
-  mistaken inputs. Add caps (e.g. max states, max steps) in `src/mcp/utils.py`
+## Medium — completed this pass (2026-08-02)
+
+- [x] ✓ **`docs/pymdp_integration.md` rewrite.** Two stale claims removed:
+  (a) "PyMDP is intentionally **not** pinned as a dependency" — false,
+  `inferactively-pymdp>=1.0.3` is declared and installed automatically;
+  (b) legacy mutable-API example (`infer_states(observation)`,
+  `infer_policies()`, `sample_action()`) replaced with the current
+  immutable/batched call convention (`infer_states(obs, prior)`,
+  `infer_policies(qs)`, `sample_action(q_pi)`). Commit `ed06406`.
+- [x] ✓ **`docs/implementation_details.md` snippets.** `create_agent` example
+  updated to construction-time configuration with batched matrices; the
+  environment description now reflects JSON-serializable env dicts with inline
+  stepping (`_step_gridworld`). Commit `199308d`.
+- [x] ✓ **`scripts/README.md` rewrite.** Removed instructions for
+  `requirements.txt` and the `pymdp-clone` PYTHONPATH entry (neither exists);
+  documented `pymcp_examples_fixed.py`; added a note that some example
+  scripts plot synthetic (np.random) free-energy traces. Commit `176d190`.
+- [x] ✓ **Synthetic traces labeled.** `scripts/start_mcp_server.py` and
+  `scripts/mcp_gridworld_examples.py`: np.random free-energy branches marked
+  `SYNTHETIC / ILLUSTRATIVE ONLY` in comments; the `start_mcp_server.py` plot
+  title now reads "(illustrative sample)" — no synthetic trace is presented as
+  measured output (legacy MAJOR-7, code part). Commit `176d190`.
+- [x] ✓ **`tests/README.md`.** `run_tests.py` → `run_all_tests.py`; canonical
+  `uv run python -m pytest tests/` documented; "adding new tests" steps point
+  at `run_all_tests.py`'s `category_patterns`. Commit `da6300f`.
+- [x] ✓ **`tests/DOCUMENTATION_TESTING.md`.** Runner references fixed; missing
+  test files added (`test_mcp_full.py`, `test_belief_dynamics.py`,
+  `test_template.py`); learning section corrected (construction-time
+  configuration, not post-hoc Dirichlet updates); 54-test green state noted.
+  Commit `da6300f`.
+- [x] ✓ **Broken test wrapper.** `tests/run_and_organize.sh` invoked
+  non-existent `run_tests.py` and passed unsupported `--organize`; now calls
+  `run_all_tests.py`. Verified end-to-end (`run_all_tests.py --category
+  belief_dynamics` → "All tests completed successfully"). Commit `680bf63`.
+- [x] ✓ **`mcp_status_report.md` rewritten.** The root status report described
+  the pre-1.0.3 failing state ("most MCP tool tests are failing", open NumPy
+  conversion issue, legacy snippets). Rewritten as an accurate, dated snapshot
+  (verified capabilities, security posture, testing, open items) and linked
+  from `docs/README.md` and the root README. Commit `676c615`.
+
+## Major — completed / open
+
+- [x] ✓ **Docs-pass infrastructure.** `REVIEW_LOG_2026-08-02.md` (dated
+  audit log) + this TODO restructured into Minor/Medium/Major with completed
+  markers and commit references. Commit: the final commit of the 2026-08-02
+  docs-deep pass (all pass commits are listed in `REVIEW_LOG_2026-08-02.md`).
+- [x] ✓ **Legacy "un-track committed artifacts" item** — resolved by
+  verification: nothing is git-tracked anymore (`tests/output/**`,
+  `server.log`, `src/pymcp_mdp.egg-info/` are all untracked and gitignored).
+- [x] ✓ **Legacy MAJOR-7 license part** — resolved by verification: `LICENSE`
+  and `README.md` both state "Copyright (c) 2025 Cole Medin"; the attributed
+  developer in the backlog header is the maintainer, not a license conflict.
+  No dedupe needed.
+- [ ] **OPEN — Server consolidation (legacy MAJOR-4 part 2).** Three parallel
+  servers remain: `src/mcp/server/app.py` (FastAPI REST), `src/main.py` +
+  hand-rolled `src/mcp/server/fastmcp.py` (MCP), and
+  `scripts/start_mcp_server.py` (1412-line near-duplicate of app.py). Deferred:
+  code refactor (unify onto the official `mcp`/FastMCP SDK); out of scope for
+  a docs pass. Files: `src/main.py`, `src/mcp/server/*`,
+  `scripts/start_mcp_server.py`.
+- [ ] **OPEN — Resource caps (legacy MAJOR-6 part 2).**
+  `define_generative_model`, `create_gridworld_agent`, and `run_simulation`
+  accept unbounded dimensions/grid/step-counts from JSON input → potential OOM
+  on malicious or mistaken inputs. Deferred: code change in `src/mcp/utils.py`
   and `src/mcp/server/app.py`.
-- [ ] **License/attribution reconcile (MAJOR-7).** `LICENSE` = MIT © 2025 Cole
-  Medin while README attributes development to Daniel Friedman / the Active
-  Inference Institute. Confirm correct copyright holder and dedupe any
-  conflicting attribution. Also `scripts/start_mcp_server.py` and
-  `scripts/mcp_gridworld_examples.py` synthesize "free-energy" traces with
-  `np.random` and plot them as analysis output — label/remove these so no
-  synthetic trace is presented as measured.
-- [ ] **Lint debt (cosmetic).** ~371 remaining `ruff` errors: unused imports
-  (`F401`, config `unfixable`) + `W293` whitespace inside code. Enable F401
-  autofix and re-run, or prune manually, when convenient.
-- [ ] **Un-track committed artifacts / hygiene.** `tests/output/**` (21 files),
-  `tests/tests/output`, `server.log`, and `src/pymdp_mcp.egg-info/` are still
-  git-tracked; `git rm --cached` them (they are already in `.gitignore`).
+- [ ] **OPEN — Lint debt (cosmetic).** ~371 remaining ruff findings (F401
+  unused imports, W293 whitespace). NOTE: `[tool.ruff] fix = true` means plain
+  `ruff check` auto-rewrites the tree — inspect with `ruff check --no-fix`;
+  a dedicated cleanup pass is required.
+- [ ] **OPEN — CI.** No GitHub Actions workflow exists; the suite runs locally
+  only (`uv run python -m pytest tests/`).
+
+---
 
 ## Open — non-negotiables / process notes
 
-- Tests must stay green against a pinned `inferactively-pymdp` (currently
-  `>=1.0.3`); re-verify with `uv run pytest tests/`.
-- Run `ruff check --fix src/ scripts/` after edits; do not regress the suite.
+- Tests must stay green against the pinned `inferactively-pymdp` (currently
+  `>=1.0.3`); re-verify with `uv run python -m pytest tests/`.
+- Inspect lint with `ruff check --no-fix` — plain `ruff check` self-modifies
+  the tree (`fix = true` in `pyproject.toml`).
+- Every doc claim must be verified against the repo before writing (this pass
+  fixed several stale claims, including the PyMDP dependency status and the
+  legacy mutable-API examples).
