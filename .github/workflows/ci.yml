@@ -1,0 +1,38 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    # Runs the documented gate of the repository against the committed lock:
+    # `uv run python -m pytest tests/` (see tests/README.md and the README).
+    name: test suite (python 3.12, frozen lock)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        # v10.3.3; setup-uv publishes no floating v10 major tag, so @v10 is unresolvable
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+
+      - name: Install the frozen environment
+        run: uv sync --frozen --python 3.12
+
+      - name: Run the test suite
+        run: uv run --frozen python -m pytest tests/

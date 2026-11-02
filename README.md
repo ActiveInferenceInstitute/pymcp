@@ -5,7 +5,7 @@ library to AI agents and applications over the Model Context Protocol (MCP)
 and a plain REST API.**
 
 [![Python](https://img.shields.io/badge/Python-%3E%3D3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![PyMDP](https://img.shields.io/badge/PyMDP-1.0.3-blue)](#)
+[![PyMDP](https://img.shields.io/badge/PyMDP-1.0.4-blue)](#)
 [![MCP](https://img.shields.io/badge/MCP-SSE%20%2F%20stdio-4B32C3)](#)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Active Inference Institute](https://img.shields.io/badge/Active%20Inference-Institute-8A2BE2)](#)
@@ -86,7 +86,7 @@ uv pip install inferactively-pymdp
 ```
 
 > PyMDP is already declared as a dependency in `pyproject.toml`
-> (`inferactively-pymdp>=1.0.3`), and step 2 just makes the engine explicit.
+> (`inferactively-pymdp>=1.0.4`), and step 2 just makes the engine explicit.
 > There is **no vendored `pymdp-clone`** in this repository — the interface talks
 > to the installed PyMDP package through its public API.
 
@@ -184,6 +184,13 @@ TRANSPORT=stdio uv run src/main.py    # stdio
 uvicorn mcp.server.app:app
 ```
 
+(`scripts/start_fastapi_server.py` is a convenience launcher for this app.)
+
+> A third, legacy server script exists: `scripts/start_mcp_server.py`. It
+> predates both servers above, serves its own REST surface, and is kept because
+> the example scripts under `scripts/` call it. It is not the recommended entry
+> point for new integrations; see [`scripts/README.md`](scripts/README.md).
+
 ```mermaid
 flowchart TB
     subgraph MCP["MCP server (SSE / stdio)"]
@@ -218,9 +225,10 @@ flowchart TB
 uv run python -m pytest tests/
 ```
 
-The suite (54 tests) exercises `PyMDPInterface` directly **and** through the MCP
-layer, verifying that the interface reproduces direct PyMDP results exactly.
-Plots and artifacts are written under `tests/output/`.
+The suite is 54 tests — the number `pytest` collects — and passes against the
+declared `inferactively-pymdp` 1.0.4. It exercises `PyMDPInterface` directly
+**and** through the MCP layer, verifying that the interface reproduces direct
+PyMDP results exactly. Plots and artifacts are written under `tests/output/`.
 
 ---
 

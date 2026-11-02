@@ -1,8 +1,8 @@
 # PyMCP (PyMDP-MCP) — Backlog
 
-Status:      OPEN — suite GREEN (54 passed / 0 failed against inferactively-pymdp 1.0.3)
+Status:      OPEN — suite GREEN (54 collected / 54 passed against inferactively-pymdp 1.0.4)
 Owner:       Daniel Ari Friedman (Active Inference Institute)
-Last reviewed: 2026-08-02 (docs-deep pass — see REVIEW_LOG_2026-08-02.md)
+Last reviewed: 2026-11-02 (dependency bump, CI, entry-point role review)
 
 ## Sections
 
@@ -92,6 +92,34 @@ Last reviewed: 2026-08-02 (docs-deep pass — see REVIEW_LOG_2026-08-02.md)
   (verified capabilities, security posture, testing, open items) and linked
   from `docs/README.md` and the root README. Commit `676c615`.
 
+## Medium — completed this pass (2026-11-02)
+
+- [x] ✓ **PyMDP floor raised to 1.0.4.** `pyproject.toml` declares
+  `inferactively-pymdp>=1.0.4`, `uv.lock` re-resolved (1.0.3 → 1.0.4), and the
+  suite re-run green. Verified locally two ways: `uv run python -m pytest
+  tests/` (54 passed, 13 s) and `uv sync --frozen --python 3.12` followed by
+  `uv run --frozen python -m pytest tests/` (54 passed, 22 s) — the frozen-lock
+  path is what CI runs. Files: `pyproject.toml`, `uv.lock`.
+- [x] ✓ **Suite count settled: 54 is the real number.** `uv run python -m
+  pytest tests/ --collect-only -q` collects exactly 54 tests, so the "54 tests"
+  claims throughout the docs are right. A raw `grep -c 'def test_'` over
+  `tests/` reports 59 because five matches are not tests: `async def
+  test_lifespan(server)` and `async def test_tool(ctx, …)` are MCP
+  handlers defined *inside* `tests/test_mcp_full.py` (lines 57, 87, 101, 162),
+  and `tests/test_template.py:258` contains the literal
+  `def test_{specific_function}(self)` inside a template string. Docs kept at
+  54 and now name the dependency the count was verified against (1.0.4).
+- [x] ✓ **Server entry-point roles documented.** Established that the entry
+  points are not redundant: `src/main.py` with the bundled
+  `src/mcp/server/fastmcp.py` is the MCP server (SSE / stdio), and
+  `src/mcp/server/app.py` is the FastAPI REST app launched by
+  `scripts/start_fastapi_server.py` or `uvicorn mcp.server.app:app`; both are
+  thin wrappers over `PyMDPInterface`. `scripts/start_mcp_server.py` is a
+  legacy standalone REST server that predates them, and the README now says so
+  instead of leaving the third server implicit. Files: `README.md`,
+  `mcp_status_report.md`, `scripts/README.md` (already documented it),
+  `docs/README.md`, `docs/ARCHITECTURE.md`.
+
 ## Major — completed / open
 
 - [x] ✓ **Docs-pass infrastructure.** `REVIEW_LOG_2026-08-02.md` (dated
@@ -105,13 +133,21 @@ Last reviewed: 2026-08-02 (docs-deep pass — see REVIEW_LOG_2026-08-02.md)
   and `README.md` both state "Copyright (c) 2025 Cole Medin"; the attributed
   developer in the backlog header is the maintainer, not a license conflict.
   No dedupe needed.
-- [ ] **OPEN — Server consolidation (legacy MAJOR-4 part 2).** Three parallel
-  servers remain: `src/mcp/server/app.py` (FastAPI REST), `src/main.py` +
-  hand-rolled `src/mcp/server/fastmcp.py` (MCP), and
-  `scripts/start_mcp_server.py` (1412-line near-duplicate of app.py). Deferred:
-  code refactor (unify onto the official `mcp`/FastMCP SDK); out of scope for
-  a docs pass. Files: `src/main.py`, `src/mcp/server/*`,
-  `scripts/start_mcp_server.py`.
+- [x] ✓ **CI.** `.github/workflows/ci.yml` runs the documented gate on every
+  push and pull request: `uv sync --frozen --python 3.12` and
+  `uv run --frozen python -m pytest tests/`. No secrets, no scanners.
+  Files: `.github/workflows/ci.yml`. Commit `<sha>`.
+- [ ] **OPEN — Server consolidation (legacy MAJOR-4 part 2), revised after the
+  2026-11-02 role review.** The three entry points serve distinct roles (see
+  the completed item above), so the remaining work is narrower than "unify
+  three servers": either retire the legacy `scripts/start_mcp_server.py` (and
+  rewire the example scripts that call it) or move the bundled FastMCP layer
+  onto the official `mcp` SDK. The earlier description of the script as a
+  "1412-line near-duplicate of app.py" was wrong — measured identical-line
+  similarity between `scripts/start_mcp_server.py` and `src/mcp/server/app.py`
+  is ≈ 2.7 %, and the script has its own endpoints and example wiring.
+  Deferred: code refactor, out of scope for a dependency/tooling pass.
+  Files: `src/main.py`, `src/mcp/server/*`, `scripts/start_mcp_server.py`.
 - [ ] **OPEN — Resource caps (legacy MAJOR-6 part 2).**
   `define_generative_model`, `create_gridworld_agent`, and `run_simulation`
   accept unbounded dimensions/grid/step-counts from JSON input → potential OOM
@@ -121,17 +157,17 @@ Last reviewed: 2026-08-02 (docs-deep pass — see REVIEW_LOG_2026-08-02.md)
   unused imports, W293 whitespace). NOTE: `[tool.ruff] fix = true` means plain
   `ruff check` auto-rewrites the tree — inspect with `ruff check --no-fix`;
   a dedicated cleanup pass is required.
-- [ ] **OPEN — CI.** No GitHub Actions workflow exists; the suite runs locally
-  only (`uv run python -m pytest tests/`).
 
 ---
 
 ## Open — non-negotiables / process notes
 
 - Tests must stay green against the pinned `inferactively-pymdp` (currently
-  `>=1.0.3`); re-verify with `uv run python -m pytest tests/`.
+  `>=1.0.4`, locked at 1.0.4); re-verify with
+  `uv run python -m pytest tests/`, and report the number `pytest` collects
+  (54 as of 2026-11-02), not a `grep` of `def test_`.
 - Inspect lint with `ruff check --no-fix` — plain `ruff check` self-modifies
   the tree (`fix = true` in `pyproject.toml`).
 - Every doc claim must be verified against the repo before writing (this pass
-  fixed several stale claims, including the PyMDP dependency status and the
-  legacy mutable-API examples).
+  fixed stale claims, including the PyMDP dependency status, the legacy
+  mutable-API examples, and the "near-duplicate server" description).

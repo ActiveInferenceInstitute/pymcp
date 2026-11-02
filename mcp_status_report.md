@@ -1,7 +1,8 @@
 # PyMCP Implementation Status Report
 
-> Status as of **2026-08-02** — package `pymdp-mcp` 1.0.3, suite **54 passed /
-> 0 failed** against `inferactively-pymdp` 1.0.3. See [TODO.md](TODO.md) for the
+> Status as of **2026-11-02** — package `pymdp-mcp` 1.0.3, suite **54 passed /
+> 0 failed** against `inferactively-pymdp` 1.0.4 (54 is the number of tests
+> `pytest` collects). See [TODO.md](TODO.md) for the
 > live backlog and [docs/README.md](docs/README.md) for the documentation index.
 
 ## Overview
@@ -56,7 +57,9 @@ suite verifies that wrapper results match direct PyMDP calls.
 
 ### Testing
 
-- **54 tests / 0 failures** — `uv run python -m pytest tests/` (~35 s).
+- **54 tests / 0 failures** — `uv run python -m pytest tests/` against
+  `inferactively-pymdp` 1.0.4. The count is what `pytest` collects, and the same
+  result is reproduced from a frozen lock under Python 3.12 (CI).
 - The suite exercises `PyMDPInterface` directly and through the MCP layer and
   asserts that wrapper results equal direct PyMDP results (no mocks).
 - Legacy organizers (`tests/run_and_organize.sh`, `tests/run_all_tests.py`)
@@ -64,13 +67,16 @@ suite verifies that wrapper results match direct PyMDP calls.
 
 ## Known open items
 
-- **Server consolidation** — `scripts/start_mcp_server.py` (a large
-  near-duplicate of the FastAPI server) and the hand-rolled FastMCP layer are
-  candidates for unification onto the official `mcp`/FastMCP SDK.
+- **Server consolidation** — the three entry points are not redundant: the MCP
+  server (`src/main.py` + bundled `src/mcp/server/fastmcp.py`) and the FastAPI
+  REST app (`src/mcp/server/app.py`) are the supported servers, while
+  `scripts/start_mcp_server.py` is a legacy standalone REST server that predates
+  them (≈ 2.7 % identical lines with `app.py`, not a near-duplicate). Remaining
+  work: retire that script, or move the bundled FastMCP layer onto the official
+  `mcp`/FastMCP SDK.
 - **Resource caps** — `define_generative_model`, `create_gridworld_agent`, and
   `run_simulation` accept unbounded dimensions/grid/steps from JSON input.
 - **Lint debt** — cosmetic `ruff` findings (unused imports, whitespace) remain.
-- **CI** — no GitHub Actions workflow exists yet.
 
 Tracked with details in [TODO.md](TODO.md).
 
