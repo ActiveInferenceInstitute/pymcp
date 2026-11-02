@@ -4,6 +4,22 @@ All notable changes to `pymcp` (package `pymdp-mcp`) are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- CI workflow (`.github/workflows/ci.yml`): installs the frozen lock
+  (`uv sync --frozen --python 3.12`) and runs the documented test gate
+  (`uv run --frozen python -m pytest tests/`) on every push and pull request.
+
+### Changed
+- Raised the PyMDP floor to `inferactively-pymdp>=1.0.4` and re-resolved
+  `uv.lock` (1.0.3 → 1.0.4). The suite is green against the new pin: 54 tests
+  passed, also from a frozen lock under Python 3.12.
+- Documented the role of each server entry point, and corrected the backlog
+  wording that described `scripts/start_mcp_server.py` as a near-duplicate of
+  `src/mcp/server/app.py`: the script is the legacy standalone REST server and
+  shares little code with the current app.
+
 ## [1.0.3] - 2026-08-01
 
 ### Added

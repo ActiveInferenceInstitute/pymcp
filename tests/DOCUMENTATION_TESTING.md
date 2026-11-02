@@ -22,7 +22,7 @@ validating that:
 3. All key PyMDP features are accessible through the MCP interface
 4. The system correctly handles complex active inference scenarios
 
-Current state: **54 tests, all passing**, against `inferactively-pymdp` 1.0.3
+Current state: **54 tests, all passing**, against `inferactively-pymdp` 1.0.4
 (the declared dependency in `pyproject.toml`).
 
 ## Test Structure
