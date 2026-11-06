@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - CI workflow (`.github/workflows/ci.yml`): installs the frozen lock
   (`uv sync --frozen --python 3.12`) and runs the documented test gate
   (`uv run --frozen python -m pytest tests/`) on every push and pull request.
+- Pinned GNN conformance job (`gnn conformance (pinned)`) in the same workflow:
+  it verifies `.github/gnn-pin.json` (GNN v5.0.3) and, as the repository has no
+  `.gnn.md` model file, validates the pinned upstream exemplar (`.github/GNN.md`).
 
 ### Changed
 - Raised the PyMDP floor to `inferactively-pymdp>=1.0.4` and re-resolved

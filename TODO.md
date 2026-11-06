@@ -135,8 +135,11 @@ Last reviewed: 2026-11-02 (dependency bump, CI, entry-point role review)
   No dedupe needed.
 - [x] ✓ **CI.** `.github/workflows/ci.yml` runs the documented gate on every
   push and pull request: `uv sync --frozen --python 3.12` and
-  `uv run --frozen python -m pytest tests/`. No secrets, no scanners.
-  Files: `.github/workflows/ci.yml`. Commit `<sha>`.
+  `uv run --frozen python -m pytest tests/`, plus the pinned GNN conformance
+  baseline (`gnn conformance (pinned)`, see `.github/GNN.md` — the repository
+  has no `.gnn.md` model file, so the job validates the pinned upstream
+  exemplar). No secrets, no scanners.
+  Files: `.github/workflows/ci.yml`. Commits `8fcd8bf` (CI), `3580827` (GNN).
 - [ ] **OPEN — Server consolidation (legacy MAJOR-4 part 2), revised after the
   2026-11-02 role review.** The three entry points serve distinct roles (see
   the completed item above), so the remaining work is narrower than "unify
