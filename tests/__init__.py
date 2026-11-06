@@ -11,4 +11,4 @@ import os
 
 # Define output directory for test results
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
-os.makedirs(OUTPUT_DIR, exist_ok=True) 
+os.makedirs(OUTPUT_DIR, exist_ok=True)
