@@ -11,6 +11,7 @@ import logging
 import os
 import sys
 import time
+import traceback
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -444,11 +445,11 @@ async def handle_step_environment(params):
         if isinstance(action, str):
             try:
                 action = json.loads(action)
-            except:
+            except ValueError:
                 # If it's not valid JSON, try to convert to int
                 try:
                     action = int(action)
-                except:
+                except ValueError:
                     return {"error": "Invalid action format"}
 
         # Call environment step
