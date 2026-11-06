@@ -97,13 +97,13 @@ class FastMCP:
                 # Extract parameter type and default value
                 param_type = "string"  # Default type
                 if param.annotation != inspect.Parameter.empty:
-                    if param.annotation == int:
+                    if param.annotation is int:
                         param_type = "number"
-                    elif param.annotation == bool:
+                    elif param.annotation is bool:
                         param_type = "boolean"
-                    elif param.annotation == dict or param.annotation == Dict:
+                    elif param.annotation is dict or param.annotation is Dict:
                         param_type = "object"
-                    elif param.annotation == list or param.annotation == List:
+                    elif param.annotation is list or param.annotation is List:
                         param_type = "array"
 
                 # Determine if parameter is required
