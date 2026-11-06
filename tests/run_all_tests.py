@@ -7,15 +7,15 @@ It combines functionality from both run_tests.py and run_and_organize.sh.
 """
 
 import argparse
+import glob
+import json
 import os
+import shutil
+import subprocess
 import sys
 import time
-import subprocess
-import glob
-from pathlib import Path
 from datetime import datetime
-import shutil
-import json
+from pathlib import Path
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -45,15 +45,15 @@ Examples:
 def setup_output_directories(args):
     """Set up output directories for test results."""
     output_base = Path(__file__).parent / "output"
-    
+
     # Create base output directory if it doesn't exist
     if not output_base.exists():
         output_base.mkdir(parents=True)
-    
+
     # Define all managed category subdirectories
     # This list should align with organize_outputs keys and summarize_results expectations
     all_managed_categories = [
-        'interface', 'mcp', 'advanced', 'visualization', 'core', 
+        'interface', 'mcp', 'advanced', 'visualization', 'core',
         'belief_dynamics', 'generative_models', 'free_energy', 'logs', 'results'
     ]
 
@@ -61,7 +61,7 @@ def setup_output_directories(args):
         category_dir = output_base / category_name
         if not category_dir.exists():
             category_dir.mkdir(parents=True) # Create if not exists
-        
+
         if not args.keep_old: # If not keeping old files, clear files within this category dir
             for item in category_dir.glob("*"): # Iterate over all items (files and dirs)
                 if item.is_file():
@@ -76,13 +76,13 @@ def setup_output_directories(args):
         for item in output_base.glob("*.*"): # Target only files in the root
             if item.is_file():
                 # Make sure not to delete .gitkeep or similar important hidden files if any
-                if not item.name.startswith('.'): 
+                if not item.name.startswith('.'):
                     item.unlink()
 
 def run_tests(args):
     """Run the tests based on the specified category or file."""
     test_dir = Path(__file__).parent
-    
+
     # Map categories to file patterns
     category_patterns = {
         'interface': ['test_interface_*.py'],
@@ -93,7 +93,7 @@ def run_tests(args):
         'belief_dynamics': ['test_belief_dynamics_*.py'],
         'all': ['test_*.py']
     }
-    
+
     if args.file:
         # Run a specific file
         test_files = [Path(args.file)]
@@ -107,42 +107,42 @@ def run_tests(args):
         if args.category not in category_patterns:
             print(f"Error: Unknown category {args.category}")
             return False
-        
+
         patterns = category_patterns[args.category]
         test_files = []
         for pattern in patterns:
             for file in test_dir.glob(pattern):
                 test_files.append(file)
-    
+
     if args.verbose:
         print(f"Found {len(test_files)} test files to run")
-    
+
     # Run each test file
     success = True
     for test_file in test_files:
         if args.verbose:
             print(f"Running {test_file}")
-        
+
         result = subprocess.run(
             [sys.executable, str(test_file)],
             capture_output=True,
             text=True
         )
-        
+
         if result.returncode != 0:
             print(f"Test {test_file} failed with exit code {result.returncode}")
             print(result.stderr)
             success = False
         elif args.verbose:
             print(f"Test {test_file} completed successfully")
-    
+
     return success
 
 def organize_outputs(args):
     """Organize output files into categories based on filenames."""
     print("Organizing output files")
     output_dir = Path(__file__).parent / "output"
-    
+
     # Enhanced category patterns with more keywords to match test outputs
     categories = {
         'interface': ['interface', 'pymdp_interface', 'get_agent', 'get_environment'],
@@ -156,7 +156,7 @@ def organize_outputs(args):
         'logs': ['log', 'computation', 'trace'],
         'results': ['result', 'policy', 'action', 'simulation_test', 'sim_result']
     }
-    
+
     moved_files = set()
 
     # Ensure category directories exist
@@ -173,7 +173,7 @@ def organize_outputs(args):
             sim_viz_path.rename(dest_path)
             moved_files.add(dest_path)
             if args.verbose:
-                print(f"  Moved simulation_viz.png to visualization/")
+                print("  Moved simulation_viz.png to visualization/")
         except OSError as e:
             print(f"  Error moving simulation_viz.png to visualization/: {e}")
 
@@ -181,7 +181,7 @@ def organize_outputs(args):
     for file_path in output_dir.glob("*.*"):  # Process only files in the root output dir
         if not file_path.is_file() or file_path.name == "simulation_viz.png":  # Skip directories and already handled file
             continue
-        
+
         moved = False
         for category_name, patterns in categories.items():
             for pattern in patterns:
@@ -199,7 +199,7 @@ def organize_outputs(args):
                         print(f"  Error moving {file_path.name} to {category_name}/: {e}")
             if moved:
                 break
-        
+
         # Try to categorize unmatched files using file extensions
         if not moved:
             if file_path.suffix.lower() == '.png':
@@ -210,7 +210,7 @@ def organize_outputs(args):
                 dest_path = dest_dir / file_path.name
             else:
                 continue  # Skip if we don't have a rule for this extension
-                
+
             try:
                 file_path.rename(dest_path)
                 moved_files.add(dest_path)
@@ -225,11 +225,11 @@ def generate_summary(args):
     """Generate a detailed test summary if requested."""
     if not args.summary:
         return
-    
+
     print("Generating test summary")
     summary_file = Path(__file__).parent / "output/summary.txt"
     with open(summary_file, "w") as f:
-        f.write(f"Test Run Summary\n")
+        f.write("Test Run Summary\n")
         f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write(f"Category: {args.category}\n")
         # Additional summary information would be added here
@@ -237,13 +237,13 @@ def generate_summary(args):
 def summarize_results(args):
     """Display summary of test results by category."""
     output_dir = Path(__file__).parent / "output"
-    
+
     print("\nTest run complete.")
     print("Output files are organized in the following directories:")
-    
+
     # Check and report on each category directory
     print("\nFiles by category:")
-    
+
     # Define expected category directories based on setup/organization logic
     expected_categories = ['interface', 'mcp', 'advanced', 'visualization', 'core', 'belief_dynamics', 'generative_models', 'free_energy', 'logs', 'results'] # Added results, generative_models, free_energy, logs
     found_files_total = 0
@@ -284,18 +284,18 @@ def run_specific_tests_for_empty_folders(args):
     """Run specific tests that generate files for empty folders."""
     output_dir = Path(__file__).parent / "output"
     empty_dirs = []
-    
+
     # Check which directories are empty
     for category_name in ['interface', 'mcp', 'core', 'belief_dynamics', 'advanced', 'visualization']:
         dir_path = output_dir / category_name
         if dir_path.is_dir() and not any(dir_path.glob("*")):
             empty_dirs.append(category_name)
-    
+
     if not empty_dirs:
         return  # All directories have files
-        
+
     print(f"\nRunning targeted tests to populate empty directories: {', '.join(empty_dirs)}")
-    
+
     # Define tests that generate files for specific directories
     tests_for_categories = {
         'interface': ['test_pymdp_interface.py'],
@@ -305,7 +305,7 @@ def run_specific_tests_for_empty_folders(args):
         'advanced': ['test_additional_functions.py'],
         'visualization': ['test_agent_visualization.py']
     }
-    
+
     # Run specific tests for empty directories
     for category in empty_dirs:
         if category in tests_for_categories:
@@ -322,19 +322,19 @@ def run_specific_tests_for_empty_folders(args):
                         print(f"  Warning: {test_file} failed with exit code {result.returncode}")
                     else:
                         print(f"  {test_file} completed successfully")
-    
+
     # For specific issues, create direct solutions
     # Handle empty visualization directory - copy key visualization files
     if 'visualization' in empty_dirs:
         print("  Ensuring visualization directory has content by manually copying files...")
         vis_dir = output_dir / "visualization"
         vis_dir.mkdir(exist_ok=True)
-        
+
         # List some PNG files from generative_models that should be copied to visualization
         gen_models_dir = output_dir / "generative_models"
         visualization_files = list(gen_models_dir.glob("*viz*.png")) + list(gen_models_dir.glob("*_generative_model.png"))
-        
-        # Ensure simulation_viz.png is handled 
+
+        # Ensure simulation_viz.png is handled
         root_sim_viz = output_dir / "simulation_viz.png"
         if root_sim_viz.exists():
             vis_dest = vis_dir / "simulation_viz.png"
@@ -343,7 +343,7 @@ def run_specific_tests_for_empty_folders(args):
                 print(f"    Copied {root_sim_viz.name} to visualization/")
             except OSError as e:
                 print(f"    Error copying {root_sim_viz.name}: {e}")
-        
+
         # Copy some visualization files from generative_models or other directories
         for src_file in visualization_files[:5]:  # Limit to 5 files
             vis_dest = vis_dir / src_file.name
@@ -352,17 +352,17 @@ def run_specific_tests_for_empty_folders(args):
                 print(f"    Copied {src_file.name} to visualization/")
             except OSError as e:
                 print(f"    Error copying {src_file.name}: {e}")
-    
+
     # Handle empty belief_dynamics directory - create minimal belief visualization
     if 'belief_dynamics' in empty_dirs:
         print("  Ensuring belief_dynamics directory has content...")
         belief_dir = output_dir / "belief_dynamics"
         belief_dir.mkdir(exist_ok=True)
-        
+
         # Create minimal belief visualization
         import matplotlib.pyplot as plt
         import numpy as np
-        
+
         # Generate simple belief dynamics visualization
         fig, ax = plt.subplots(figsize=(10, 6))
         beliefs = np.array([
@@ -372,50 +372,50 @@ def run_specific_tests_for_empty_folders(args):
             [0.2, 0.7, 0.1],
             [0.1, 0.8, 0.1]
         ])
-        
+
         timesteps = range(len(beliefs))
         for i in range(beliefs.shape[1]):
             ax.plot(timesteps, beliefs[:, i], label=f'State {i+1}')
-        
+
         ax.set_title('Belief Dynamics')
         ax.set_xlabel('Timestep')
         ax.set_ylabel('Belief')
         ax.legend()
         ax.grid(True, alpha=0.3)
-        
+
         # Save to belief_dynamics directory
         belief_file = belief_dir / "sample_belief_dynamics.png"
         plt.savefig(belief_file)
         plt.close(fig)
         print(f"    Created {belief_file.name} in belief_dynamics/")
-        
+
         # Create JSON representation as well
         belief_data = {
             "timesteps": list(timesteps),
             "beliefs": beliefs.tolist(),
             "description": "Sample belief dynamics for testing"
         }
-        
+
         belief_json = belief_dir / "sample_belief_dynamics.json"
         with open(belief_json, 'w') as f:
             json.dump(belief_data, f, indent=2)
         print(f"    Created {belief_json.name} in belief_dynamics/")
-    
+
     # Handle empty advanced directory - create advanced visualization
     if 'advanced' in empty_dirs:
         print("  Ensuring advanced directory has content...")
         advanced_dir = output_dir / "advanced"
         advanced_dir.mkdir(exist_ok=True)
-        
+
         # Create advanced visualization with multiple subplots
         import matplotlib.pyplot as plt
         import numpy as np
         from matplotlib.gridspec import GridSpec
-        
+
         # Sample data for advanced visualization
         fig = plt.figure(figsize=(12, 8))
         gs = GridSpec(2, 2, figure=fig)
-        
+
         # 1. Learning curve subplot
         ax1 = fig.add_subplot(gs[0, 0])
         epochs = np.arange(20)
@@ -425,7 +425,7 @@ def run_specific_tests_for_empty_folders(args):
         ax1.set_xlabel('Epoch')
         ax1.set_ylabel('Performance')
         ax1.grid(True, alpha=0.3)
-        
+
         # 2. Free energy components subplot
         ax2 = fig.add_subplot(gs[0, 1])
         components = ['Accuracy', 'Complexity', 'Free Energy']
@@ -433,7 +433,7 @@ def run_specific_tests_for_empty_folders(args):
         ax2.bar(components, values)
         ax2.set_title('Free Energy Components')
         ax2.set_ylabel('Value')
-        
+
         # 3. Temporal Planning subplot
         ax3 = fig.add_subplot(gs[1, 0])
         num_policies = 5
@@ -446,7 +446,7 @@ def run_specific_tests_for_empty_folders(args):
         ax3.set_ylabel('EFE')
         ax3.legend()
         ax3.grid(True, alpha=0.3)
-        
+
         # 4. Advanced state space subplot
         ax4 = fig.add_subplot(gs[1, 1])
         n_states = 5
@@ -460,15 +460,15 @@ def run_specific_tests_for_empty_folders(args):
         ax4.set_xlabel('To State')
         ax4.set_ylabel('From State')
         plt.colorbar(im, ax=ax4)
-        
+
         plt.tight_layout()
-        
+
         # Save to advanced directory
         advanced_file = advanced_dir / "advanced_analysis.png"
         plt.savefig(advanced_file)
         plt.close(fig)
         print(f"    Created {advanced_file.name} in advanced/")
-        
+
         # Create JSON data too
         advanced_data = {
             "learning_curve": {
@@ -486,7 +486,7 @@ def run_specific_tests_for_empty_folders(args):
             },
             "description": "Advanced analysis data for testing"
         }
-        
+
         advanced_json = advanced_dir / "advanced_analysis.json"
         with open(advanced_json, 'w') as f:
             json.dump(advanced_data, f, indent=2)
@@ -495,27 +495,27 @@ def run_specific_tests_for_empty_folders(args):
 def main():
     """Main function to run tests."""
     args = parse_arguments()
-    
+
     print(f"Running tests in category: {args.category}")
-    
+
     # Set up directories
     setup_output_directories(args)
-    
+
     # Run tests
     success = run_tests(args)
-    
+
     # Try to run specific tests for empty folders
     run_specific_tests_for_empty_folders(args)
-    
+
     # Organize outputs
     organize_outputs(args)
-    
+
     # Generate summary
     generate_summary(args)
-    
+
     # Display results summary
     summarize_results(args)
-    
+
     # Report overall status
     if success:
         print("All tests completed successfully")
@@ -525,4 +525,4 @@ def main():
         return 1
 
 if __name__ == "__main__":
-    sys.exit(main()) 
+    sys.exit(main())

@@ -5,12 +5,14 @@ This file provides templates for creating PyMDP-MCP tests with standard docstrin
 formats and structure.
 """
 
-import unittest
-import numpy as np
-import sys
-import os
 import json
+import os
+import sys
+import unittest
+
 import matplotlib
+import numpy as np
+
 matplotlib.use('Agg')  # Use non-interactive Agg backend for testing
 
 # Setup output directory
@@ -26,13 +28,12 @@ if src_dir not in sys.path:
 
 
 # Import directly from the utils module
-from mcp.utils import PyMDPInterface
-
 # Import real PyMDP for validation
 import pymdp
 
 # Import the MCP implementation
-from mcp.server.fastmcp import FastMCP, Context
+from mcp.server.fastmcp import Context, FastMCP
+from mcp.utils import PyMDPInterface
 
 # Example import template for reference
 import_template = """
@@ -60,7 +61,7 @@ class TestTemplate(unittest.TestCase):
     This template provides examples of standard docstring formats and test structures
     to ensure consistency across test files.
     """
-    
+
     def setUp(self):
         """Set up test fixtures.
         
@@ -69,7 +70,7 @@ class TestTemplate(unittest.TestCase):
         """
         self.pymdp_interface = PyMDPInterface()
         os.makedirs(OUTPUT_DIR, exist_ok=True)
-        
+
     def tearDown(self):
         """Clean up after tests.
         
@@ -77,7 +78,7 @@ class TestTemplate(unittest.TestCase):
         temporary files or resources created during the test.
         """
         pass
-        
+
     def test_template_function(self):
         """Test template function with standard docstring format.
         
@@ -105,18 +106,18 @@ class TestTemplate(unittest.TestCase):
         """
         # Create test data
         test_data = {"key": "value"}
-        
+
         # Call function being tested
         result = test_data  # Placeholder for actual function call
-        
+
         # Validate results
         self.assertEqual(result["key"], "value")
-        
+
         # Save output files (if applicable)
         output_file = os.path.join(GEN_MODEL_DIR, "template_test_output.json")
         with open(output_file, "w") as f:
             json.dump(result, f, indent=2)
-            
+
     def test_agent_creation_template(self):
         """Test creating an active inference agent with specified parameters.
         
@@ -150,21 +151,21 @@ class TestTemplate(unittest.TestCase):
         B = [[[[0.9, 0.1], [0.1, 0.9]], [[0.5, 0.5], [0.5, 0.5]]]]
         C = [[1.0, 0.0]]
         D = [[0.5, 0.5]]
-        
+
         generative_model = {"A": A, "B": B, "C": C, "D": D}
-        
+
         # Create agent
         result = self.pymdp_interface.create_agent("test_agent", generative_model)
-        
+
         # Example validation
         self.assertEqual(result["name"], "test_agent")
         self.assertEqual(result["num_observation_modalities"], 1)
         self.assertEqual(result["num_state_factors"], 1)
-        
+
         # Verify agent is a real PyMDP Agent instance
         agent = self.pymdp_interface.agents["test_agent"]
         self.assertIsInstance(agent, pymdp.agent.Agent)
-        
+
     def test_inference_template(self):
         """Test inference with detailed computation logs.
         
@@ -199,7 +200,7 @@ class TestTemplate(unittest.TestCase):
         # Validate results
         # Save output
         pass
-        
+
     def test_simulation_template(self):
         """Test running and visualizing a simulation.
         
@@ -285,4 +286,4 @@ class Test{Category}(unittest.TestCase):
 
 if __name__ == '__main__':
     print("This is a template file and should not be run directly.")
-    print("Copy the relevant sections to create new test files or update existing ones.") 
+    print("Copy the relevant sections to create new test files or update existing ones.")
