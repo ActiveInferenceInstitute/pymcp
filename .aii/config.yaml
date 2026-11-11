@@ -1,7 +1,7 @@
 # AII sidecar — InstituteOS metadata. Schema: aii_platform.aii_sidecar
 meta:
   sidecar_version: 1.2.1
-  updated: '2026-11-10'
+  updated: '2026-11-11'
 repo:
   name: pymcp
   slug: pymcp
@@ -13,6 +13,8 @@ repo:
     inference, and simulate environments from any MCP client or REST caller.
 institute:
   category: research-software
+  status: active
+  maturity: wip
   steward: Active Inference Institute
 ecosystem:
   relations:
