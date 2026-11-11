@@ -160,6 +160,21 @@ Last reviewed: 2026-11-02 (dependency bump, CI, entry-point role review)
 
 ---
 
+## Known caveats (recorded 2026-11-11, docs pass 3)
+
+- [ ] **GNN conformance warning sentinel is truthy.** The `gnn-conformance`
+  CI job in `.github/workflows/ci.yml` gates on
+  `if not GNNTypeChecker().validate_gnn_files(model_dir, Path(output_dir)):`.
+  `GNNTypeChecker` signals a warning/non-clean result by returning `2`; because
+  every nonzero integer is truthy in Python, `not 2` is `False`, so the job
+  **passes even when the checker reports `2`**. The check therefore does not
+  currently fail on that warning sentinel. Fix by comparing against the
+  expected success value explicitly (e.g. `!= 0`) or by making the checker
+  return a boolean/raise. Files: `.github/workflows/ci.yml`. Curation only in
+  this pass — code/workflow change left for the owner.
+
+---
+
 ## Open — non-negotiables / process notes
 
 - Tests must stay green against the pinned `inferactively-pymdp` (currently

@@ -73,7 +73,7 @@ capabilities:
 - ci
 tasks:
   test:
-    cmd: python -m pytest
+    cmd: uv run python -m pytest tests/
     description: Run the test suite.
 docs:
 - README.md

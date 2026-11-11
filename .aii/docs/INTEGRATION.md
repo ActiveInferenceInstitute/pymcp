@@ -51,7 +51,7 @@
 
 | Task | Command | Working directory | Description |
 | --- | --- | --- | --- |
-| `test` | `python -m pytest` | `.` | Run the test suite. |
+| `test` | `uv run python -m pytest tests/` | `.` | Run the test suite. |
 
 ## Validation
 

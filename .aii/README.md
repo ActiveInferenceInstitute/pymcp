@@ -41,7 +41,7 @@ Institute repositories without touching this project's own content. The schema i
 
 | Task | Command | Working directory | Description |
 | --- | --- | --- | --- |
-| `test` | `python -m pytest` | `.` | Run the test suite. |
+| `test` | `uv run python -m pytest tests/` | `.` | Run the test suite. |
 
 ## Links
 

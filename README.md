@@ -20,6 +20,41 @@ PyMDP directly.
 
 ---
 
+## Contents
+
+- [Status](#status)
+- [Architecture](#architecture)
+- [Key features](#key-features)
+- [Installation](#installation)
+- [Quickstart (interface directly)](#quickstart-interface-directly)
+- [The `PyMDPInterface` methods](#the-pymdpinterface-methods)
+- [Server run modes](#server-run-modes)
+- [Testing](#testing)
+- [Documentation](#documentation)
+- [Citation](#citation)
+- [License](#license)
+
+## Status
+
+The core loop works today against the declared `inferactively-pymdp>=1.0.4`
+engine: model construction, state/policy inference, action sampling, gridworld
+simulation, and visualization. Two servers ship — an MCP server (SSE / stdio) and
+a FastAPI REST app — both thin wrappers over the same `PyMDPInterface`.
+
+- **Needs the resolved environment:** the test suite and either server require
+  the declared dependencies installed (`uv sync`); a bare interpreter cannot
+  import `pymdp`. See [Testing](#testing).
+- **CI-only check:** the GNN conformance job installs a pinned parser from
+  GitHub and is not runnable offline; see [`TODO.md`](TODO.md) for a known
+  warning-sentinel caveat in it.
+- **Open work:** server consolidation, unbounded resource caps on JSON inputs,
+  and cosmetic lint debt are tracked in [`TODO.md`](TODO.md).
+
+See [`docs/`](docs/README.md) for setup, testing, architecture and the tool
+reference.
+
+---
+
 ## Architecture
 
 ```mermaid
@@ -222,19 +257,29 @@ flowchart TB
 ## Testing
 
 ```bash
-uv run python -m pytest tests/
+uv sync --frozen --python 3.12          # install the committed lock
+uv run --frozen python -m pytest tests/ # run the suite
 ```
 
-The suite is 54 tests — the number `pytest` collects — and passes against the
-declared `inferactively-pymdp` 1.0.4. It exercises `PyMDPInterface` directly
-**and** through the MCP layer, verifying that the interface reproduces direct
-PyMDP results exactly. Plots and artifacts are written under `tests/output/`.
+The suite is **54 tests** — the number `pytest --collect-only -q tests/` reports
+(a raw `grep -c 'def test_'` says 59 because five matches are not tests; see the
+count breakdown in [`docs/testing.md`](docs/testing.md)). It passes against the
+declared `inferactively-pymdp` 1.0.4, exercises `PyMDPInterface` directly **and**
+through the MCP layer, and verifies that the interface reproduces direct PyMDP
+results exactly. Plots and artifacts are written under `tests/output/`.
+
+> The suite needs the resolved environment; on a bare interpreter without the
+> declared dependencies `pytest` cannot import the modules and collection fails.
+> The count above was verified by static collection of the `test_*` functions,
+> not by a passing run in this environment. See [Testing](docs/testing.md).
 
 ---
 
 ## Documentation
 
 - [Docs index](docs/README.md)
+- [Setup and usage](docs/setup.md)
+- [Testing](docs/testing.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [MCP & PyMDP integration](docs/mcp_pymdp_integration.md)
 - [MCP tools reference](docs/mcp_tools.md)
