@@ -271,3 +271,11 @@ If you use this project in research, please cite the underlying PyMDP library:
 
 This project is licensed under the [MIT License](LICENSE).
 Copyright (c) 2025 Cole Medin.
+
+## InstituteOS sidecar
+
+This repository carries a committed [`.aii/`](.aii/README.md) sidecar with curated
+InstituteOS metadata (`aii-sidecar/v1`): category, maturity, ecosystem relations,
+key artifacts, provenance, and portable tasks. It is read by
+[InstituteOS](https://github.com/ActiveInferenceInstitute/InstituteOS) tooling and
+does not affect the project's build or runtime.
