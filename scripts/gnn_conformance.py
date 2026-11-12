@@ -10,16 +10,17 @@ What it does, in order:
 1. Read `.github/gnn-pin.json` and verify its schema (`gnn-importer-pin/v1`),
    repository, tag and revision.
 2. Install the pinned parser into an isolated `.gnn-venv/` (never the project
-   environment, so `uv run --frozen` cannot prune it) and verify the installed
-   `gnn.__version__` matches the pin.
+   environment, so `uv run --frozen` cannot prune it) and reuse it only when the
+   recorded version *and* git commit match the pin revision, so a same-version
+   pin change cannot silently reuse older code.
 3. Parse and syntax-validate every `*.gnn.md` sketch in the repository and
    type-check them. When the repository has no sketch, parse the pinned
    upstream `input/gnn_files/basics/static_perception.md` exemplar instead.
 
-The type check accepts only a clean result: `GNNTypeChecker.validate_gnn_files`
-returns `True` on success for a clean model, and `2` for a warning sentinel.
-Truthiness is not a verdict (`not 2` is `False`), so success is compared
-explicitly against `True` and `0`.
+The type check accepts one value: the boolean `True`. `GNNTypeChecker` returns
+`True` for a clean model and `2` for its warning sentinel, so equality tests are
+unsound here — `not 2` is `False` and `False == 0` — and the verdict is
+therefore an identity check.
 
 Exit status: 0 when the pin, parser and sketches agree; 1 otherwise, with the
 reason on stderr and a JSON verdict on stdout.
@@ -45,15 +46,16 @@ EXEMPLAR = "input/gnn_files/basics/static_perception.md"
 SKIP_DIRS = frozenset({".git", ".venv", PARSER_ENV, "node_modules", "__pycache__"})
 
 
-class ConformanceError(SystemExit):
-    """A conformance failure reported as exit status 1 with a message."""
-
-    def __init__(self, message: str) -> None:
-        super().__init__(f"gnn-conformance: {message}")
-
-
 def log(message: str) -> None:
     print(message, file=sys.stderr)
+
+
+class ConformanceError(SystemExit):
+    """A conformance failure: message on stderr, exit status 1."""
+
+    def __init__(self, message: str) -> None:
+        log(f"gnn-conformance: {message}")
+        super().__init__(1)
 
 
 def run(args: list[str], *, cwd: Path) -> None:
@@ -103,22 +105,57 @@ def venv_python(repo_root: Path) -> Path:
     return repo_root / PARSER_ENV / "bin" / "python"
 
 
-def installed_version(python: Path) -> str | None:
+# Reads the installed parser's version and the git commit recorded by the
+# installer, so reuse can be bound to the pin revision and not just the version.
+PARSER_PROBE = """
+import json
+from importlib import metadata
+
+try:
+    dist = metadata.distribution("generalized-notation-notation")
+except metadata.PackageNotFoundError:
+    raise SystemExit(1)
+raw = dist.read_text("direct_url.json")
+info = json.loads(raw) if raw else {}
+print(
+    json.dumps(
+        {
+            "version": dist.version,
+            "commit": (info.get("vcs_info") or {}).get("commit_id"),
+        }
+    )
+)
+"""
+
+
+def installed_record(python: Path) -> dict | None:
+    """The installed parser's `{version, commit}`, or `None` if absent."""
     probe = subprocess.run(
-        [str(python), "-c", "import gnn; print(gnn.__version__)"],
+        [str(python), "-c", PARSER_PROBE],
         capture_output=True,
         text=True,
         check=False,
     )
     if probe.returncode != 0:
         return None
-    return probe.stdout.strip()
+    try:
+        return json.loads(probe.stdout)
+    except json.JSONDecodeError:
+        return None
+
+
+def reuse_ok(record: dict | None, pin: dict) -> bool:
+    """Reuse the parser env only for this exact pin: version *and* revision."""
+    if not record:
+        return False
+    return record.get("version") == pin["tag"].removeprefix("v") and record.get(
+        "commit"
+    ) == pin["revision"]
 
 
 def ensure_parser(repo_root: Path, pin: dict) -> Path:
     """Create/reuse the isolated parser environment and pin its parser."""
     python = venv_python(repo_root)
-    expected = pin["tag"].removeprefix("v")
 
     if not python.exists():
         log(f"creating {PARSER_ENV} (python 3.12)")
@@ -134,9 +171,20 @@ def ensure_parser(repo_root: Path, pin: dict) -> Path:
                 f"creating {PARSER_ENV} failed (exit {exc.returncode})"
             ) from exc
 
-    if installed_version(python) == expected:
-        log(f"reusing {PARSER_ENV}: gnn {expected} already installed")
+    record = installed_record(python)
+    if reuse_ok(record, pin):
+        log(
+            f"reusing {PARSER_ENV}: gnn {record['version']} "
+            f"at {record['commit']} matches the pin"
+        )
         return python
+
+    if record:
+        log(
+            f"reinstalling: {PARSER_ENV} holds gnn {record.get('version')} at "
+            f"{record.get('commit')} but the pin is {pin['tag']} at "
+            f"{pin['revision']}"
+        )
 
     log(f"installing pinned parser {pin['repository']}@{pin['revision']}")
     try:
@@ -171,10 +219,11 @@ def ensure_parser(repo_root: Path, pin: dict) -> Path:
             "the check needs network access to the pinned GitHub revision"
         ) from exc
 
-    actual = installed_version(python)
-    if actual != expected:
+    installed = installed_record(python)
+    if not reuse_ok(installed, pin):
         raise ConformanceError(
-            f"installed gnn {actual!r} does not match pin {pin['tag']!r}"
+            f"installed parser does not match the pin: got {installed!r}, "
+            f"expected gnn {pin['tag']} at {pin['revision']}"
         )
     return python
 
@@ -191,17 +240,27 @@ def check_sketch(sketch: Path) -> None:
         raise ConformanceError(f"{sketch} syntax errors: {syntax_errors!r}")
 
 
+def typecheck_verdict(result: object) -> None:
+    """Raise unless the checker returned its documented clean success.
+
+    The clean contract is the boolean `True`. Equality-based checks are wrong
+    here: `False == 0` and `1 == True`, so a membership test such as
+    `result in (True, 0)` accepts a failure and a warning sentinel. `False`,
+    `2` (warning sentinel), `1`, `0` and any non-boolean are failures.
+    """
+    if result is True:
+        return
+    raise ConformanceError(
+        "GNN type checker did not return a clean result "
+        f"(validate_gnn_files returned {result!r}, type "
+        f"{type(result).__name__}); clean success is the boolean True"
+    )
+
+
 def typecheck(model_dir: Path, output_dir: Path) -> None:
     from gnn.type_checker import GNNTypeChecker
 
-    result = GNNTypeChecker().validate_gnn_files(model_dir, Path(output_dir))
-    # Clean results are True (clean model) or 0; 2 is a warning sentinel and
-    # therefore a failure here, and any other value is unhandled.
-    if result not in (True, 0):
-        raise ConformanceError(
-            "GNN type checker did not return a clean result "
-            f"(validate_gnn_files returned {result!r})"
-        )
+    typecheck_verdict(GNNTypeChecker().validate_gnn_files(model_dir, Path(output_dir)))
 
 
 def rglob_sketches(root: Path) -> list[Path]:
