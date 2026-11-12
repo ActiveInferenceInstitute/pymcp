@@ -45,6 +45,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   sidecar task entry updated to match.
 
 ### Fixed
+- Corrected the sidecar's integration and agent-document paths to `.aii/docs/`.
+- GNN pin validation rejects non-object JSON and non-string required fields with
+  the declared conformance failure instead of ordinary Python exceptions.
+- The GNN pointer distinguishes local conformance from shared-reader contract
+  adoption, which remains blocked because the current pin lacks `gnn.importers`.
 - GNN conformance verdict: the type-check result is now an identity check on
   `True`. The previous membership test accepted `False` (`False == 0`) and `1`
   (`1 == True`) alongside the clean value, and `ConformanceError` exited with
