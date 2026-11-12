@@ -14,6 +14,12 @@ recorded git commit (`direct_url.json` → `vcs_info.commit_id`) equals the pin
 revision, so a same-version pin change re-installs rather than testing the old
 parser.
 
+This is local conformance, not completed adoption of the
+[GNN–FEP shared-reader contract](https://github.com/ActiveInferenceInstitute/Generalized_Notation_Notation/blob/a8ca0d71/docs/workflows/gnn-fep.md):
+the pinned `v5.0.3` runtime lacks `gnn.importers`, so adoption remains blocked
+until the pin includes the reader. Keep the current local gate described in the
+[Run Guide's GNN arm](../docs/RUN_GUIDE.md#the-gnn-arm); do not overlay a newer reader.
+
 What the job parses:
 
 - every `*.gnn.md` sketch in the repository (currently
