@@ -24,8 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `docs/documentation-index.md` (flat index), `docs/_generated/README.md`.
 
 ### Changed
+- GNN conformance: parser reuse in `.gnn-venv/` is bound to the pinned revision
+  (installed `direct_url.json` → `vcs_info.commit_id`), not just the tag, so a
+  same-version pin change re-installs instead of silently checking older code.
 - CI (`.github/workflows/ci.yml`) now runs only `./run.sh` arms. Both jobs
-  install the toolchain with the shared composite action
+  compose the same shared composite action
   `ActiveInferenceInstitute/.github/.github/actions/setup-python-uv`
   (pinned `@7159e67…`, `python-version: "3.12"`). The `tests` job syncs the
   frozen lock once and runs lint, docs and the full suite in that one
@@ -40,6 +43,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   the generated facts page; `AGENTS.md`, `tests/README.md`,
   `tests/DOCUMENTATION_TESTING.md`, `scripts/README.md` and the InstituteOS
   sidecar task entry updated to match.
+
+### Fixed
+- GNN conformance verdict: the type-check result is now an identity check on
+  `True`. The previous membership test accepted `False` (`False == 0`) and `1`
+  (`1 == True`) alongside the clean value, and `ConformanceError` exited with
+  the message as its status code rather than a fixed status 1. `False`, `2`,
+  `1`, `0` and non-booleans now fail with status 1; regression tests are in
+  `tests/test_gnn_conformance.py`.
 
 ### Previously recorded
 - CI workflow (`.github/workflows/ci.yml`): installs the frozen lock

@@ -68,18 +68,23 @@ own `.gnn-venv/` (gitignored) for the parser.
 file `.github/gnn-pin.json` — schema `gnn-importer-pin/v1`, repository
 `ActiveInferenceInstitute/Generalized_Notation_Notation`, tag `v5.0.3`,
 revision `8f293d9ba810e6eda5c09842d9c7ed9ffa5f92c1` (recorded 2026-11-12). It
-verifies the pin fields, installs that exact commit into `.gnn-venv/`, and
-requires the installed `gnn` version to match the pin before parsing anything.
+verifies the pin fields and installs that exact commit into `.gnn-venv/`.
+
+Reuse of `.gnn-venv/` is bound to the **revision**, not just the version: the
+installed parser's `direct_url.json` commit must equal the pin revision, so a
+same-version pin change reinstalls instead of silently testing older code.
 
 What it parses is documented in [`../.github/GNN.md`](../.github/GNN.md): every
 `*.gnn.md` sketch in the repository (currently `models/gridworld_3x3.gnn.md`),
 and the pinned upstream `input/gnn_files/basics/static_perception.md` exemplar
-when the repository has no sketch. The type-check verdict is compared
-explicitly against a clean result (`True` or `0`); the checker's warning
-sentinel `2` fails the arm instead of passing it through truthiness.
+when the repository has no sketch. The type check accepts one value, the
+boolean `True`. Equality tests are unsound here — `not 2` is `False` and
+`False == 0` — so the verdict is an identity check, and the warning sentinel
+`2`, `False`, `1` and `0` all fail the arm. Regression tests for those cases
+live in `tests/test_gnn_conformance.py`.
 
 The arm needs network access the first time it installs the pinned revision;
-after that the `.gnn-venv/` is reused and the check is local.
+after that a revision-matching `.gnn-venv/` is reused and the check is local.
 
 ## Refreshing the generated facts
 
