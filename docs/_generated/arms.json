@@ -1,0 +1,74 @@
+{
+  "arms": [
+    {
+      "arm": "lint",
+      "command": "./run.sh lint",
+      "seconds": 0.08,
+      "status": "pass"
+    },
+    {
+      "arm": "test",
+      "command": "./run.sh test",
+      "seconds": 12.97,
+      "status": "pass"
+    },
+    {
+      "arm": "test-full",
+      "command": "./run.sh test-full",
+      "seconds": 53.39,
+      "status": "pass"
+    },
+    {
+      "arm": "links",
+      "command": "./run.sh links",
+      "seconds": 0.1,
+      "status": "pass"
+    },
+    {
+      "arm": "gnn",
+      "command": "./run.sh gnn",
+      "seconds": 1.1,
+      "status": "pass"
+    }
+  ],
+  "commit": "8826334",
+  "host": "Darwin arm64",
+  "python": "3.12.16",
+  "recorded": "2026-11-12T13:01:33Z",
+  "schema": "pymcp-gate-facts/v1",
+  "tests": {
+    "collected": 54,
+    "files": {
+      "tests/test_additional_functions.py": {
+        "collected": 7,
+        "slow": 0
+      },
+      "tests/test_agent_visualization.py": {
+        "collected": 4,
+        "slow": 3
+      },
+      "tests/test_belief_dynamics.py": {
+        "collected": 3,
+        "slow": 1
+      },
+      "tests/test_mcp_full.py": {
+        "collected": 5,
+        "slow": 0
+      },
+      "tests/test_mcp_tools.py": {
+        "collected": 16,
+        "slow": 2
+      },
+      "tests/test_pymdp_interface.py": {
+        "collected": 15,
+        "slow": 2
+      },
+      "tests/test_template.py": {
+        "collected": 4,
+        "slow": 0
+      }
+    },
+    "slow": 8
+  },
+  "uv": "uv 0.13.7 (Homebrew 2026-11-03 aarch64-apple-darwin)"
+}

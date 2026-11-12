@@ -18,21 +18,31 @@ An MCP server and FastAPI backend for PyMDP active-inference agents — expose t
 | --- | --- |
 | `src/main.py` | MCP server entry point (FastMCP over SSE / stdio). |
 | `src/mcp/` | Core package: `utils.py` (`PyMDPInterface`), servers, clients, environments, visualization. See [`src/README.md`](src/README.md). |
-| `tests/` | pytest suite (54 tests). See [`tests/README.md`](tests/README.md). |
-| `scripts/` | Example scripts and legacy launchers. See [`scripts/README.md`](scripts/README.md). |
-| `docs/` | Documentation tree; index at [`docs/README.md`](docs/README.md). |
+| `tests/` | pytest suite; counts and the `slow` split are generated into [`docs/_generated/gate-facts.md`](docs/_generated/gate-facts.md). See [`tests/README.md`](tests/README.md). |
+| `run.sh` | The gate: one arm per command, and the exact commands CI runs. See [`docs/RUN_GUIDE.md`](docs/RUN_GUIDE.md). |
+| `scripts/` | Repo tooling (`run.sh` helpers, doc checks), examples, legacy runners. See [`scripts/README.md`](scripts/README.md). |
+| `docs/` | Documentation tree; hub at [`docs/README.md`](docs/README.md), flat index at [`docs/documentation-index.md`](docs/documentation-index.md). |
 | `.aii/` | InstituteOS sidecar metadata. |
 
 ## Tasks
 
 | Task | Command | Working directory |
 | --- | --- | --- |
-| `test` | `uv run python -m pytest tests/` | `.` |
-| `lint` | `uv run ruff check --no-fix` | `.` |
+| `setup` | `./run.sh setup` | `.` |
+| `test` (fast) | `./run.sh test` | `.` |
+| `test-full` | `./run.sh test-full` | `.` |
+| `lint` | `./run.sh lint` | `.` |
+| `docs` | `./run.sh docs` | `.` |
+| `gnn` | `./run.sh gnn` | `.` |
+| `all` | `./run.sh all` | `.` |
 
-Install the environment first with `uv sync --frozen --python 3.12`. The suite is
-54 tests; see [`docs/testing.md`](docs/testing.md). `ruff` is configured with
-`fix = true`, so use `--no-fix` to inspect without rewriting the tree.
+Install the environment first with `./run.sh setup`
+(`uv sync --frozen --python 3.12`). Arms, CI job keys and the pinned GNN
+conformance check are documented in [`docs/RUN_GUIDE.md`](docs/RUN_GUIDE.md);
+measured test counts and per-arm wall times are generated into
+[`docs/_generated/gate-facts.md`](docs/_generated/gate-facts.md) by
+`scripts/gate_facts.py`. `ruff` is configured with `fix = true`, so the `lint`
+arm passes `--no-fix` to avoid rewriting the tree.
 
 ## InstituteOS sidecar
 

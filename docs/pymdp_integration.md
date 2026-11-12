@@ -71,9 +71,9 @@ faithful to PyMDP's internal representation.
 
 ## Verification
 
-The test suite (under `tests/`, run with `uv run python -m pytest tests/`)
-exercises the interface directly and through the MCP layer, and confirms the
-wrapper reproduces the results of direct PyMDP calls — so the integration is a
-thin, behavior-preserving layer rather than a re-implementation. See the root
+The test suite (under `tests/`, run with `./run.sh test-full`) exercises the
+interface directly and through the MCP layer, and confirms the wrapper
+reproduces the results of direct PyMDP calls — so the integration is a thin,
+behavior-preserving layer rather than a re-implementation. See the root
 [`README.md`](../README.md) and [implementation_details.md](implementation_details.md)
 for more.

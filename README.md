@@ -257,27 +257,34 @@ flowchart TB
 ## Testing
 
 ```bash
-uv sync --frozen --python 3.12          # install the committed lock
-uv run --frozen python -m pytest tests/ # run the suite
+./run.sh setup       # install the committed lock (Python 3.12)
+./run.sh test        # fast arm: the suite minus the `slow` tests
+./run.sh all         # lint, full suite, docs, pinned GNN conformance
 ```
 
-The suite is **54 tests** — the number `pytest --collect-only -q tests/` reports
-(a raw `grep -c 'def test_'` says 59 because five matches are not tests; see the
-count breakdown in [`docs/testing.md`](docs/testing.md)). It passes against the
-declared `inferactively-pymdp` 1.0.4, exercises `PyMDPInterface` directly **and**
-through the MCP layer, and verifies that the interface reproduces direct PyMDP
-results exactly. Plots and artifacts are written under `tests/output/`.
+`./run.sh` is the single gate entry point; both CI jobs call its arms, so there
+is no second copy of a test or lint command anywhere. See the
+[Run Guide](docs/RUN_GUIDE.md) for the arm list and
+[`docs/_generated/gate-facts.md`](docs/_generated/gate-facts.md) for the
+generated test counts and per-arm wall times.
+
+The suite exercises `PyMDPInterface` directly **and** through the MCP layer, and
+verifies that the interface reproduces direct PyMDP results exactly. Plots and
+artifacts are written under `tests/output/`. Counts come from
+`scripts/gate_facts.py`, not from prose.
 
 > The suite needs the resolved environment; on a bare interpreter without the
 > declared dependencies `pytest` cannot import the modules and collection fails.
-> The count above was verified by static collection of the `test_*` functions,
-> not by a passing run in this environment. See [Testing](docs/testing.md).
+> See [Testing](docs/testing.md).
 
 ---
 
 ## Documentation
 
 - [Docs index](docs/README.md)
+- [Documentation index (flat list)](docs/documentation-index.md)
+- [Run guide — the `./run.sh` gate](docs/RUN_GUIDE.md)
+- [Generated gate facts](docs/_generated/gate-facts.md)
 - [Setup and usage](docs/setup.md)
 - [Testing](docs/testing.md)
 - [Architecture](docs/ARCHITECTURE.md)

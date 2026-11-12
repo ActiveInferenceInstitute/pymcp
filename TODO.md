@@ -1,8 +1,8 @@
 # PyMCP (PyMDP-MCP) — Backlog
 
-Status:      OPEN — suite GREEN (54 collected / 54 passed against inferactively-pymdp 1.0.4)
+Status:      OPEN — suite GREEN (`./run.sh test-full`); counts in `docs/_generated/gate-facts.md`
 Owner:       Daniel Ari Friedman (Active Inference Institute)
-Last reviewed: 2026-11-02 (dependency bump, CI, entry-point role review)
+Last reviewed: 2026-11-12 (gate entry point, CI dedup, lint retirement, docs index)
 
 ## Sections
 
@@ -134,12 +134,15 @@ Last reviewed: 2026-11-02 (dependency bump, CI, entry-point role review)
   developer in the backlog header is the maintainer, not a license conflict.
   No dedupe needed.
 - [x] ✓ **CI.** `.github/workflows/ci.yml` runs the documented gate on every
-  push and pull request: `uv sync --frozen --python 3.12` and
-  `uv run --frozen python -m pytest tests/`, plus the pinned GNN conformance
-  baseline (`gnn conformance (pinned)`, see `.github/GNN.md` — the repository
-  has no `.gnn.md` model file, so the job validates the pinned upstream
-  exemplar). No secrets, no scanners.
-  Files: `.github/workflows/ci.yml`. Commits `8fcd8bf` (CI), `3580827` (GNN).
+  push and pull request through `./run.sh` arms only (2026-11-12): the `tests`
+  job (`test suite (python 3.12, frozen lock)`) syncs the frozen lock once and
+  runs `./run.sh lint`, `./run.sh docs`, `./run.sh test-full`; the
+  `gnn-conformance` job (`gnn conformance (pinned)`) runs `./run.sh gnn`. Both
+  use the shared composite action
+  `ActiveInferenceInstitute/.github/.github/actions/setup-python-uv@7159e67315330aac8e414aebae0ad1e999a41448`.
+  No secrets, no scanners. See [`docs/RUN_GUIDE.md`](docs/RUN_GUIDE.md).
+  Files: `.github/workflows/ci.yml`, `run.sh`. Commits `8fcd8bf` (CI),
+  `3580827` (GNN), plus the 2026-11-12 gate pass.
 - [ ] **OPEN — Server consolidation (legacy MAJOR-4 part 2), revised after the
   2026-11-02 role review.** The three entry points serve distinct roles (see
   the completed item above), so the remaining work is narrower than "unify
@@ -156,36 +159,40 @@ Last reviewed: 2026-11-02 (dependency bump, CI, entry-point role review)
   accept unbounded dimensions/grid/step-counts from JSON input → potential OOM
   on malicious or mistaken inputs. Deferred: code change in `src/mcp/utils.py`
   and `src/mcp/server/app.py`.
-- [ ] **OPEN — Lint debt (cosmetic).** ~371 remaining ruff findings (F401
-  unused imports, W293 whitespace). NOTE: `[tool.ruff] fix = true` means plain
-  `ruff check` auto-rewrites the tree — inspect with `ruff check --no-fix`;
-  a dedicated cleanup pass is required.
+- [x] ✓ **Lint debt retired (2026-11-12).** All 435 ruff findings fixed:
+  307 W293 + 3 W291 (blank-line/trailing whitespace), 74 F401 (unused imports —
+  one intentional side-effect import in `src/mcp/visualization/__init__.py` now
+  an explicit redundant alias), 26 F841 (unused locals), 25 E402 and 4 I001.
+  `E402` is exempted once for `tests/*` and `scripts/*` in
+  `[tool.ruff.lint.per-file-ignores]` because those files put `src/` on
+  `sys.path` (and select the matplotlib backend) before importing project
+  modules. `./run.sh lint` exits 0; the suite is green after the cleanup
+  (verified by `./run.sh test-full`).
+  Files: `pyproject.toml`, `src/**`, `tests/**`, `scripts/**`.
 
 ---
 
 ## Known caveats (recorded 2026-11-11, docs pass 3)
 
-- [ ] **GNN conformance warning sentinel is truthy.** The `gnn-conformance`
-  CI job in `.github/workflows/ci.yml` gates on
-  `if not GNNTypeChecker().validate_gnn_files(model_dir, Path(output_dir)):`.
-  `GNNTypeChecker` signals a warning/non-clean result by returning `2`; because
-  every nonzero integer is truthy in Python, `not 2` is `False`, so the job
-  **passes even when the checker reports `2`**. The check therefore does not
-  currently fail on that warning sentinel. Fix by comparing against the
-  expected success value explicitly (e.g. `!= 0`) or by making the checker
-  return a boolean/raise. Files: `.github/workflows/ci.yml`. Curation only in
-  this pass — code/workflow change left for the owner.
+- [x] ✓ **GNN conformance warning sentinel is truthy — resolved 2026-11-12.**
+  The check moved out of the workflow into `scripts/gnn_conformance.py`
+  (`./run.sh gnn`). It compares the type-check result explicitly against the
+  clean values (`True`, `0`) and fails on the warning sentinel `2`, so
+  truthiness no longer decides the verdict. The repo sketch
+  (`models/gridworld_3x3.gnn.md`) returns a clean `True`; the clean value is
+  asserted rather than assumed.
 
 ---
 
 ## Open — non-negotiables / process notes
 
 - Tests must stay green against the pinned `inferactively-pymdp` (currently
-  `>=1.0.4`, locked at 1.0.4); re-verify with
-  `uv run python -m pytest tests/`, and report the number `pytest` collects
-  (54 as of 2026-11-02), not a `grep` of `def test_`.
-- Inspect lint with `ruff check --no-fix` — plain `ruff check` self-modifies
-  the tree (`fix = true` in `pyproject.toml`).
+  `>=1.0.4`, locked at 1.0.4); re-verify with `./run.sh test-full`, not a bare
+  `pytest` call. The collected count is generated into
+  [`docs/_generated/gate-facts.md`](docs/_generated/gate-facts.md) by
+  `scripts/gate_facts.py` — do not quote a `grep` of `def test_`.
+- Lint with `./run.sh lint` (`ruff check --no-fix`) — plain `ruff check`
+  self-modifies the tree (`fix = true` in `pyproject.toml`).
 - Every doc claim must be verified against the repo before writing (this pass
   fixed stale claims, including the PyMDP dependency status, the legacy
   mutable-API examples, and the "near-duplicate server" description).

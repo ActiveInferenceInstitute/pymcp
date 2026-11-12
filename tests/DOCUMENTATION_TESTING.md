@@ -22,8 +22,11 @@ validating that:
 3. All key PyMDP features are accessible through the MCP interface
 4. The system correctly handles complex active inference scenarios
 
-Current state: **54 tests, all passing**, against `inferactively-pymdp` 1.0.4
-(the declared dependency in `pyproject.toml`).
+Current state: the suite passes against `inferactively-pymdp` 1.0.4 (the
+declared dependency in `pyproject.toml`). The collected total and per-file
+counts are generated into
+[`../docs/_generated/gate-facts.md`](../docs/_generated/gate-facts.md) by
+`scripts/gate_facts.py`; do not copy them here.
 
 ## Test Structure
 
@@ -60,7 +63,8 @@ specific aspects of the integration:
 ### Running All Tests (canonical)
 
 ```bash
-uv run python -m pytest tests/        # from the repository root
+./run.sh test-full   # from the repository root — every collected test
+./run.sh test        # fast arm: deselects the `slow` tests
 ```
 
 ### Legacy runners

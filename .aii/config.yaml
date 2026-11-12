@@ -73,8 +73,8 @@ capabilities:
 - ci
 tasks:
   test:
-    cmd: uv run python -m pytest tests/
-    description: Run the test suite.
+    cmd: ./run.sh test-full
+    description: Run the full test suite (all gate arms are ./run.sh <arm>).
 docs:
 - README.md
 - AGENTS.md

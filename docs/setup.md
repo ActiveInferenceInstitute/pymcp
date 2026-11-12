@@ -24,10 +24,11 @@ uv pip install inferactively-pymdp       # the engine, already declared in pypro
 the engine explicit. There is **no vendored PyMDP clone** — the interface talks
 to the installed package through its public API.
 
-For reproducible development, prefer the committed lock:
+For reproducible development, prefer the committed lock — the gate's `setup`
+arm does exactly this:
 
 ```bash
-uv sync --frozen --python 3.12
+./run.sh setup        # = uv sync --frozen --python 3.12
 ```
 
 ## Quickstart (interface directly)
