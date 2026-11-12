@@ -1,11 +1,17 @@
 """Tests for the pinned GNN conformance gate (`./run.sh gnn`).
 
-These cover the two decisions that used to be unsound in the gate script:
+The gate delegates pin, pointer and syntax validation to the shared reader
+(`python -m gnn.importers check`), which the pinned revision ships. These tests
+cover only what this repository still owns:
 
+* the bootstrap revision read, which has to exist before the pinned reader can
+  run at all;
+* parser reuse, which must be bound to the pinned *revision* and not merely to
+  the parser version, or a same-version pin change silently reuses old code;
 * the type-check verdict, where equality tests accept a failure (`False == 0`)
   and a warning sentinel (`1 == True`), so only an identity check is correct;
-* parser reuse, which must be bound to the pinned *revision* and not merely to
-  the parser version, or a same-version pin change silently reuses old code.
+* the reader invocation, which is the contract's arm and must not silently lose
+  its pointer requirements.
 
 The script is imported by path because it lives in `scripts/`, not in the
 installed package. No `gnn` import happens at module scope, so these tests run
@@ -14,6 +20,7 @@ in the ordinary project environment.
 
 import importlib.util
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -26,12 +33,7 @@ SPEC = importlib.util.spec_from_file_location(
 gnn_conformance = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(gnn_conformance)
 
-PIN = {
-    "schema": "gnn-importer-pin/v1",
-    "repository": "ActiveInferenceInstitute/Generalized_Notation_Notation",
-    "revision": "8f293d9ba810e6eda5c09842d9c7ed9ffa5f92c1",
-    "tag": "v5.0.3",
-}
+REVISION = "75c834bd8519dc7b5adc4d24f16bf393cfd1ecdf"
 
 
 class TestTypecheckVerdict(unittest.TestCase):
@@ -66,78 +68,93 @@ class TestTypecheckVerdict(unittest.TestCase):
 
 class TestParserReuse(unittest.TestCase):
     def test_reuse_requires_the_pinned_revision(self):
-        record = {"version": "5.0.3", "commit": PIN["revision"]}
-        self.assertTrue(gnn_conformance.reuse_ok(record, PIN))
+        record = {"version": "5.1.0", "commit": REVISION}
+        self.assertTrue(gnn_conformance.reuse_ok(record, REVISION))
 
-    def test_same_version_different_commit_is_not_reused(self):
-        record = {"version": "5.0.3", "commit": "0" * 40}
-        self.assertFalse(gnn_conformance.reuse_ok(record, PIN))
-
-    def test_different_version_is_not_reused(self):
-        record = {"version": "5.0.2", "commit": PIN["revision"]}
-        self.assertFalse(gnn_conformance.reuse_ok(record, PIN))
+    def test_different_commit_is_not_reused(self):
+        record = {"version": "5.1.0", "commit": "0" * 40}
+        self.assertFalse(gnn_conformance.reuse_ok(record, REVISION))
 
     def test_missing_commit_is_not_reused(self):
-        record = {"version": "5.0.3", "commit": None}
-        self.assertFalse(gnn_conformance.reuse_ok(record, PIN))
+        record = {"version": "5.1.0", "commit": None}
+        self.assertFalse(gnn_conformance.reuse_ok(record, REVISION))
 
     def test_absent_install_is_not_reused(self):
-        self.assertFalse(gnn_conformance.reuse_ok(None, PIN))
+        self.assertFalse(gnn_conformance.reuse_ok(None, REVISION))
 
     def test_record_without_the_parser_is_none(self):
         # The project interpreter does not install the pinned parser.
         self.assertIsNone(gnn_conformance.installed_record(Path(sys.executable)))
 
 
-class TestPinValidation(unittest.TestCase):
-    def _load(self, pin: object) -> dict:
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            (root / ".github").mkdir()
-            (root / ".github" / "gnn-pin.json").write_text(json.dumps(pin))
-            return gnn_conformance.load_pin(root)
+class TestBootstrapRevision(unittest.TestCase):
+    def _pin(self, payload: object) -> Path:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        (root / ".github").mkdir()
+        (root / ".github" / "gnn-pin.json").write_text(json.dumps(payload))
+        return root
 
-    def test_canonical_pin_loads(self):
-        self.assertEqual(self._load(PIN), PIN)
+    def test_recorded_revision_is_returned(self):
+        root = self._pin({"revision": REVISION})
+        self.assertEqual(gnn_conformance.pinned_revision(root), REVISION)
 
-    def test_non_object_pin_is_rejected(self):
-        for pin in (None, False, 1, 1.5, "pin", [], ["schema"]):
-            with self.subTest(pin=pin):
-                with self.assertRaises(gnn_conformance.ConformanceError) as raised:
-                    self._load(pin)
+    def test_commit_key_is_accepted(self):
+        root = self._pin({"commit": REVISION})
+        self.assertEqual(gnn_conformance.pinned_revision(root), REVISION)
+
+    def test_pin_without_a_revision_is_rejected(self):
+        for payload in ({}, {"tag": "v5.1.0"}, {"revision": ""}, {"revision": 5}):
+            with self.subTest(payload=payload):
+                root = self._pin(payload)
+                with self.assertRaises(SystemExit) as raised:
+                    gnn_conformance.pinned_revision(root)
                 self.assertEqual(raised.exception.code, 1)
 
-    def test_non_string_fields_are_rejected(self):
-        for field in PIN:
-            for value in (None, False, 1, 1.5, [], {}, ["a"] * 40):
-                with self.subTest(field=field, value=value):
-                    with self.assertRaises(gnn_conformance.ConformanceError) as raised:
-                        self._load({**PIN, field: value})
-                    self.assertEqual(raised.exception.code, 1)
+    def test_non_object_pin_is_rejected(self):
+        for payload in (None, False, 1, "pin", ["revision"]):
+            with self.subTest(payload=payload):
+                root = self._pin(payload)
+                with self.assertRaises(SystemExit) as raised:
+                    gnn_conformance.pinned_revision(root)
+                self.assertEqual(raised.exception.code, 1)
 
-    def test_wrong_schema_is_rejected(self):
-        with self.assertRaises(SystemExit) as raised:
-            self._load({**PIN, "schema": "gnn-importer-pin/v0"})
-        self.assertEqual(raised.exception.code, 1)
+    def test_absent_pin_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaises(SystemExit) as raised:
+                gnn_conformance.pinned_revision(Path(directory))
+            self.assertEqual(raised.exception.code, 1)
 
-    def test_short_revision_is_rejected(self):
-        with self.assertRaises(SystemExit):
-            self._load({**PIN, "revision": "8f293d9b"})
+    def test_repository_pin_records_a_commit(self):
+        revision = gnn_conformance.pinned_revision(REPO_ROOT)
+        self.assertRegex(revision, r"^[0-9a-f]{40}$")
 
-    def test_missing_field_is_rejected(self):
-        without_tag = {k: v for k, v in PIN.items() if k != "tag"}
-        with self.assertRaises(SystemExit):
-            self._load(without_tag)
+    def test_parser_spec_targets_the_revision(self):
+        spec = gnn_conformance.parser_spec(REVISION)
+        self.assertIn(REVISION, spec)
+        self.assertIn(
+            "git+https://github.com/"
+            "ActiveInferenceInstitute/Generalized_Notation_Notation.git",
+            spec,
+        )
 
-    def test_repository_pin_is_valid(self):
-        loaded = gnn_conformance.load_pin(REPO_ROOT)
-        self.assertEqual(loaded["schema"], "gnn-importer-pin/v1")
-        self.assertEqual(len(loaded["revision"]), 40)
 
-    def test_parser_spec_targets_the_pin_revision(self):
-        spec = gnn_conformance.parser_spec(PIN)
-        self.assertIn(PIN["revision"], spec)
-        self.assertIn(f"git+https://github.com/{PIN['repository']}.git", spec)
+class TestReaderInvocation(unittest.TestCase):
+    def test_arm_runs_the_shared_reader(self):
+        self.assertEqual(
+            gnn_conformance.READER_ARGS[:4], ("-m", "gnn.importers", "check", "--repo")
+        )
+
+    def test_arm_requires_the_pointer_with_workflow_and_job(self):
+        args = gnn_conformance.READER_ARGS
+        self.assertIn("--require-pointer", args)
+        self.assertEqual(args[args.index("--workflow") + 1], ".github/workflows/ci.yml")
+        self.assertEqual(args[args.index("--job") + 1], "gnn-conformance")
+
+    def test_job_key_matches_the_committed_workflow(self):
+        workflow = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text()
+        self.assertRegex(workflow, rf"(?m)^\s+{re.escape(gnn_conformance.JOB_KEY)}:$")
 
 
 if __name__ == "__main__":

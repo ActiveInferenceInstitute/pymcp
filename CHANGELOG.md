@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   (`gnn-importer-pin/v1`), installs the pinned revision into an isolated
   `.gnn-venv/`, and treats the type checker's warning sentinel `2` as a failure
   rather than passing it through truthiness.
+- GNN–FEP shared-reader adoption. `.github/gnn-pin.json` advances from GNN
+  `v5.0.3` (`8f293d9ba810e6eda5c09842d9c7ed9ffa5f92c1`) to `v5.1.0`
+  (`75c834bd8519dc7b5adc4d24f16bf393cfd1ecdf`), the revision that ships
+  `src/gnn/importers.py`. `./run.sh gnn` now runs
+  `python -m gnn.importers check --repo . --require-pointer --workflow
+  .github/workflows/ci.yml --job gnn-conformance` inside the materialized
+  `.gnn-venv/`, so pin discovery and shape, the `.github/GNN.md` pointer and
+  `*.gnn.md` syntax validation come from the shared reader; the only pin key
+  this repository still reads is the revision it must install.
 - `scripts/check_docs.py` — relative Markdown link check plus `docs/`
   documentation-index coverage, run by `./run.sh links`.
 - `scripts/gate_facts.py` — records per-arm wall times and collected test counts
@@ -27,6 +36,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - GNN conformance: parser reuse in `.gnn-venv/` is bound to the pinned revision
   (installed `direct_url.json` → `vcs_info.commit_id`), not just the tag, so a
   same-version pin change re-installs instead of silently checking older code.
+- GNN conformance: the local pin reader is deleted. Pin discovery and shape, the
+  `.github/GNN.md` pointer and `*.gnn.md` syntax validation are the shared
+  reader's, and the pin-shape regression tests went with the code they covered.
+  The sketch-less upstream exemplar fallback is gone too: the repository carries
+  `models/gridworld_3x3.gnn.md`, and the reader reports `spec-absent` if it ever
+  disappears.
 - CI (`.github/workflows/ci.yml`) now runs only `./run.sh` arms. Both jobs
   compose the same shared composite action
   `ActiveInferenceInstitute/.github/.github/actions/setup-python-uv`
@@ -48,10 +63,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Restored the sidecar's `docs/INTEGRATION.md` and `docs/AGENTS.md` entries:
   the pinned InstituteOS validator resolves `docs[]` relative to `.aii/`, not
   the repository root; the audit's proposed `.aii/docs/` prefix was incorrect.
-- GNN pin validation rejects non-object JSON and non-string required fields with
-  the declared conformance failure instead of ordinary Python exceptions.
-- The GNN pointer distinguishes local conformance from shared-reader contract
-  adoption, which remains blocked because the current pin lacks `gnn.importers`.
+- GNN–FEP adoption is no longer blocked. The blocker was the pin naming a
+  revision that predates `gnn.importers` (`8f293d9b`, `v5.0.3`); the pin now
+  names `75c834bd8519` (`v5.1.0`), so the reader runs in the pinned environment
+  and this repository no longer duplicates pin, pointer or syntax validation.
 - GNN conformance verdict: the type-check result is now an identity check on
   `True`. The previous membership test accepted `False` (`False == 0`) and `1`
   (`1 == True`) alongside the clean value, and `ConformanceError` exited with

@@ -11,7 +11,7 @@ These scripts are not examples; they back the arms of `./run.sh` (see
 
 | Script | Called by | Purpose |
 | --- | --- | --- |
-| `gnn_conformance.py` | `./run.sh gnn` | Verifies `.github/gnn-pin.json` (schema `gnn-importer-pin/v1`), installs the pinned GNN revision into `.gnn-venv/`, and parses/type-checks the repository sketches. Prints a JSON verdict. |
+| `gnn_conformance.py` | `./run.sh gnn` | Installs the revision `.github/gnn-pin.json` records into `.gnn-venv/`, runs the shared `python -m gnn.importers check` reader from that environment (pin, pointer and spec validation), and type-checks the specifications the reader discovers. Prints a JSON verdict. |
 | `check_docs.py` | `./run.sh links` | Checks every relative Markdown link in tracked `*.md` files and that each page under `docs/` appears in `docs/documentation-index.md`. |
 | `gate_facts.py` | `./run.sh docs` (`--check`) and `--record` | Re-runs the arms, writes `docs/_generated/arms.json`, and renders `docs/_generated/gate-facts.md`. |
 

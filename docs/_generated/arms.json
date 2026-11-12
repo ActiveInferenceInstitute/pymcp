@@ -3,41 +3,41 @@
     {
       "arm": "lint",
       "command": "./run.sh lint",
-      "seconds": 0.08,
+      "seconds": 0.13,
       "status": "pass"
     },
     {
       "arm": "test",
       "command": "./run.sh test",
-      "seconds": 4.96,
+      "seconds": 4.73,
       "status": "pass"
     },
     {
       "arm": "test-full",
       "command": "./run.sh test-full",
-      "seconds": 14.51,
+      "seconds": 15.91,
       "status": "pass"
     },
     {
       "arm": "links",
       "command": "./run.sh links",
-      "seconds": 0.11,
+      "seconds": 0.08,
       "status": "pass"
     },
     {
       "arm": "gnn",
       "command": "./run.sh gnn",
-      "seconds": 0.44,
+      "seconds": 0.64,
       "status": "pass"
     }
   ],
-  "commit": "bbe224e",
+  "commit": "c394a1c",
   "host": "Darwin arm64",
   "python": "3.12.16",
-  "recorded": "2026-11-12T14:59:16Z",
+  "recorded": "2026-11-12T16:20:04Z",
   "schema": "pymcp-gate-facts/v1",
   "tests": {
-    "collected": 73,
+    "collected": 74,
     "files": {
       "tests/test_additional_functions.py": {
         "collected": 7,
@@ -52,7 +52,7 @@
         "slow": 1
       },
       "tests/test_gnn_conformance.py": {
-        "collected": 19,
+        "collected": 20,
         "slow": 0
       },
       "tests/test_mcp_full.py": {
