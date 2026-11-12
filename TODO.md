@@ -2,7 +2,8 @@
 
 Status:      OPEN — suite GREEN (`./run.sh test-full`); counts in `docs/_generated/gate-facts.md`
 Owner:       Daniel Ari Friedman (Active Inference Institute)
-Last reviewed: 2026-11-12 (gate entry point, CI dedup, lint retirement, docs index)
+Last reviewed: 2026-11-12 (gate entry point, CI dedup, lint retirement, docs
+             index, pymdp 1.0.5 / GNN v5.1.0 reconciliation)
 
 ## Sections
 
@@ -80,8 +81,8 @@ Last reviewed: 2026-11-12 (gate entry point, CI dedup, lint retirement, docs ind
 - [x] ✓ **`tests/DOCUMENTATION_TESTING.md`.** Runner references fixed; missing
   test files added (`test_mcp_full.py`, `test_belief_dynamics.py`,
   `test_template.py`); learning section corrected (construction-time
-  configuration, not post-hoc Dirichlet updates); 54-test green state noted.
-  Commit `da6300f`.
+  configuration, not post-hoc Dirichlet updates); 54-test green state noted
+  (later superseded: 74 tests at the 2026-11-12 gate facts). Commit `da6300f`.
 - [x] ✓ **Broken test wrapper.** `tests/run_and_organize.sh` invoked
   non-existent `run_tests.py` and passed unsupported `--organize`; now calls
   `run_all_tests.py`. Verified end-to-end (`run_all_tests.py --category
@@ -99,7 +100,9 @@ Last reviewed: 2026-11-12 (gate entry point, CI dedup, lint retirement, docs ind
   suite re-run green. Verified locally two ways: `uv run python -m pytest
   tests/` (54 passed, 13 s) and `uv sync --frozen --python 3.12` followed by
   `uv run --frozen python -m pytest tests/` (54 passed, 22 s) — the frozen-lock
-  path is what CI runs. Files: `pyproject.toml`, `uv.lock`.
+  path is what CI runs. Files: `pyproject.toml`, `uv.lock`. Superseded
+  2026-11-12 by the `>=1.0.5` floor (commit `aefde2f`, PR #28; see the
+  2026-11-12 item below).
 - [x] ✓ **Suite count settled: 54 is the real number.** `uv run python -m
   pytest tests/ --collect-only -q` collects exactly 54 tests, so the "54 tests"
   claims throughout the docs are right. A raw `grep -c 'def test_'` over
@@ -109,6 +112,9 @@ Last reviewed: 2026-11-12 (gate entry point, CI dedup, lint retirement, docs ind
   and `tests/test_template.py:258` contains the literal
   `def test_{specific_function}(self)` inside a template string. Docs kept at
   54 and now name the dependency the count was verified against (1.0.4).
+  Superseded 2026-11-12: `pytest tests/` now collects 74 tests across 8 files
+  (8 marked `slow`), recorded in `docs/_generated/gate-facts.md`. 54 was the
+  real number at the 2026-11-02 pin and is retained only as history.
 - [x] ✓ **Server entry-point roles documented.** Established that the entry
   points are not redundant: `src/main.py` with the bundled
   `src/mcp/server/fastmcp.py` is the MCP server (SSE / stdio), and
@@ -119,6 +125,18 @@ Last reviewed: 2026-11-12 (gate entry point, CI dedup, lint retirement, docs ind
   instead of leaving the third server implicit. Files: `README.md`,
   `mcp_status_report.md`, `scripts/README.md` (already documented it),
   `docs/README.md`, `docs/ARCHITECTURE.md`.
+
+## Minor — completed 2026-11-12
+
+- [x] ✓ **PyMDP floor raised to 1.0.5.** `pyproject.toml` declares
+  `inferactively-pymdp>=1.0.5`; `uv.lock` re-resolved (1.0.4 → 1.0.5) in commit
+  `aefde2f` (PR #28). `./run.sh test-full` passes with no test or assertion
+  changed — 74 passed, 14 subtests in 15.0 s on 2026-11-12. Recorded in
+  `CHANGELOG.md` under `[Unreleased]`.
+- [x] ✓ **Test count reconciled to 74.** `pytest tests/` collects 74 tests
+  across 8 files, 8 of them marked `slow`; `docs/_generated/gate-facts.md`
+  (recorded 2026-11-12 at `c394a1c`) is the generated source. The 54-test count
+  in the 2026-11-02 items above is history, not the current number.
 
 ## Major — completed / open
 
@@ -153,12 +171,23 @@ Last reviewed: 2026-11-12 (gate entry point, CI dedup, lint retirement, docs ind
   similarity between `scripts/start_mcp_server.py` and `src/mcp/server/app.py`
   is ≈ 2.7 %, and the script has its own endpoints and example wiring.
   Deferred: code refactor, out of scope for a dependency/tooling pass.
-  Files: `src/main.py`, `src/mcp/server/*`, `scripts/start_mcp_server.py`.
+  Owner: Daniel Ari Friedman (maintainer). Blocked only on choosing between
+  retiring the script and migrating to the official `mcp` SDK; no external
+  dependency blocks it. Files: `src/main.py`, `src/mcp/server/*`,
+  `scripts/start_mcp_server.py`.
 - [ ] **OPEN — Resource caps (legacy MAJOR-6 part 2).**
   `define_generative_model`, `create_gridworld_agent`, and `run_simulation`
   accept unbounded dimensions/grid/step-counts from JSON input → potential OOM
   on malicious or mistaken inputs. Deferred: code change in `src/mcp/utils.py`
-  and `src/mcp/server/app.py`.
+  and `src/mcp/server/app.py`. Owner: Daniel Ari Friedman (maintainer). No
+  external blocker, but the cap values need a maintainer decision.
+- [ ] **OPEN — Current-state docs still quote the 2026-11-02 pin and count.**
+  `mcp_status_report.md` (header and testing section) says pymdp 1.0.4 and
+  54 tests, and `docs/setup.md` calls testing "the 54-test suite"; the lock is
+  1.0.5 and `docs/_generated/gate-facts.md` records 74 tests. Update both pages
+  to the generated count and pin, or date-stamp them as historical snapshots.
+  Owner: Daniel Ari Friedman (maintainer). No external blocker.
+  Files: `mcp_status_report.md`, `docs/setup.md`.
 - [x] ✓ **Lint debt retired (2026-11-12).** All 435 ruff findings fixed:
   307 W293 + 3 W291 (blank-line/trailing whitespace), 74 F401 (unused imports —
   one intentional side-effect import in `src/mcp/visualization/__init__.py` now
