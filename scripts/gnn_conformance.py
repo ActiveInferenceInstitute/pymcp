@@ -77,10 +77,18 @@ def load_pin(repo_root: Path) -> dict:
     except json.JSONDecodeError as exc:
         raise ConformanceError(f"{PIN_PATH} is not valid JSON: {exc}") from exc
 
+    if not isinstance(pin, dict):
+        raise ConformanceError(f"{PIN_PATH} must be a JSON object")
+
     required = ("schema", "repository", "revision", "tag")
     missing = [key for key in required if not pin.get(key)]
     if missing:
         raise ConformanceError(f"{PIN_PATH} is missing {', '.join(missing)}")
+    non_strings = [key for key in required if not isinstance(pin[key], str)]
+    if non_strings:
+        raise ConformanceError(
+            f"{PIN_PATH} fields must be strings: {', '.join(non_strings)}"
+        )
     if pin["schema"] != PIN_SCHEMA:
         raise ConformanceError(
             f"{PIN_PATH} schema is {pin['schema']!r}, expected {PIN_SCHEMA!r}"

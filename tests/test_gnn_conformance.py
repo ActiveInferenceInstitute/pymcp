@@ -90,7 +90,7 @@ class TestParserReuse(unittest.TestCase):
 
 
 class TestPinValidation(unittest.TestCase):
-    def _load(self, pin: dict) -> dict:
+    def _load(self, pin: object) -> dict:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / ".github").mkdir()
@@ -99,6 +99,21 @@ class TestPinValidation(unittest.TestCase):
 
     def test_canonical_pin_loads(self):
         self.assertEqual(self._load(PIN), PIN)
+
+    def test_non_object_pin_is_rejected(self):
+        for pin in (None, False, 1, 1.5, "pin", [], ["schema"]):
+            with self.subTest(pin=pin):
+                with self.assertRaises(gnn_conformance.ConformanceError) as raised:
+                    self._load(pin)
+                self.assertEqual(raised.exception.code, 1)
+
+    def test_non_string_fields_are_rejected(self):
+        for field in PIN:
+            for value in (None, False, 1, 1.5, [], {}, ["a"] * 40):
+                with self.subTest(field=field, value=value):
+                    with self.assertRaises(gnn_conformance.ConformanceError) as raised:
+                        self._load({**PIN, field: value})
+                    self.assertEqual(raised.exception.code, 1)
 
     def test_wrong_schema_is_rejected(self):
         with self.assertRaises(SystemExit) as raised:
