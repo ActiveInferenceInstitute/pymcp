@@ -193,7 +193,7 @@ Last reviewed: 2026-11-12 (gate entry point, CI dedup, lint retirement, docs ind
 ## Open — non-negotiables / process notes
 
 - Tests must stay green against the pinned `inferactively-pymdp` (currently
-  `>=1.0.4`, locked at 1.0.4); re-verify with `./run.sh test-full`, not a bare
+  `>=1.0.5`, locked at 1.0.5); re-verify with `./run.sh test-full`, not a bare
   `pytest` call. The collected count is generated into
   [`docs/_generated/gate-facts.md`](docs/_generated/gate-facts.md) by
   `scripts/gate_facts.py` — do not quote a `grep` of `def test_`.

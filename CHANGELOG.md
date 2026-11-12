@@ -58,6 +58,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   the generated facts page; `AGENTS.md`, `tests/README.md`,
   `tests/DOCUMENTATION_TESTING.md`, `scripts/README.md` and the InstituteOS
   sidecar task entry updated to match.
+- PyMDP floor raised to `inferactively-pymdp>=1.0.5`; `uv.lock` re-resolved with
+  `uv lock` (1.0.4 → 1.0.5, `sha256:c5846121…` sdist / `sha256:5e423a33…`
+  wheel). The suite is green against the new pin with no test or assertion
+  changed (74 passed, 14 subtests), and no live 1.0.5 behaviour differs for the
+  surface this repository uses.
 
 ### Fixed
 - Restored the sidecar's `docs/INTEGRATION.md` and `docs/AGENTS.md` entries:

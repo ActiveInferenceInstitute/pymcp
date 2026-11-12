@@ -16,7 +16,7 @@ from pymdp.maths import get_joint_likelihood
 
 ## PyMDP is a declared dependency
 
-`inferactively-pymdp>=1.0.4` is declared in `pyproject.toml`, so installing this
+`inferactively-pymdp>=1.0.5` is declared in `pyproject.toml`, so installing this
 package (e.g. `uv pip install -e .`) pulls PyMDP in automatically. Installing
 PyMDP explicitly (`uv pip install inferactively-pymdp`) is only needed if you
 want a version other than the declared floor, or an upgrade, in your
