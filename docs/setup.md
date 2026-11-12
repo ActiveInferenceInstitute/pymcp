@@ -20,7 +20,7 @@ uv pip install -e .                      # installs fastapi, uvicorn, numpy, mat
 uv pip install inferactively-pymdp       # the engine, already declared in pyproject.toml
 ```
 
-`inferactively-pymdp` is a declared dependency (`>=1.0.4`); step two just makes
+`inferactively-pymdp` is a declared dependency (`>=1.0.5`); step two just makes
 the engine explicit. There is **no vendored PyMDP clone** — the interface talks
 to the installed package through its public API.
 

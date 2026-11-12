@@ -22,7 +22,7 @@ validating that:
 3. All key PyMDP features are accessible through the MCP interface
 4. The system correctly handles complex active inference scenarios
 
-Current state: the suite passes against `inferactively-pymdp` 1.0.4 (the
+Current state: the suite passes against `inferactively-pymdp` 1.0.5 (the
 declared dependency in `pyproject.toml`). The collected total and per-file
 counts are generated into
 [`../docs/_generated/gate-facts.md`](../docs/_generated/gate-facts.md) by

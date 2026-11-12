@@ -5,7 +5,7 @@ library to AI agents and applications over the Model Context Protocol (MCP)
 and a plain REST API.**
 
 [![Python](https://img.shields.io/badge/Python-%3E%3D3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![PyMDP](https://img.shields.io/badge/PyMDP-1.0.4-blue)](#)
+[![PyMDP](https://img.shields.io/badge/PyMDP-1.0.5-blue)](#)
 [![MCP](https://img.shields.io/badge/MCP-SSE%20%2F%20stdio-4B32C3)](#)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Active Inference Institute](https://img.shields.io/badge/Active%20Inference-Institute-8A2BE2)](#)
@@ -36,7 +36,7 @@ PyMDP directly.
 
 ## Status
 
-The core loop works today against the declared `inferactively-pymdp>=1.0.4`
+The core loop works today against the declared `inferactively-pymdp>=1.0.5`
 engine: model construction, state/policy inference, action sampling, gridworld
 simulation, and visualization. Two servers ship — an MCP server (SSE / stdio) and
 a FastAPI REST app — both thin wrappers over the same `PyMDPInterface`.
@@ -121,7 +121,7 @@ uv pip install inferactively-pymdp
 ```
 
 > PyMDP is already declared as a dependency in `pyproject.toml`
-> (`inferactively-pymdp>=1.0.4`), and step 2 just makes the engine explicit.
+> (`inferactively-pymdp>=1.0.5`), and step 2 just makes the engine explicit.
 > There is **no vendored `pymdp-clone`** in this repository — the interface talks
 > to the installed PyMDP package through its public API.
 
