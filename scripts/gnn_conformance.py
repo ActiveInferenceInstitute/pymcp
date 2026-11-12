@@ -28,7 +28,9 @@ What it does, in order:
    the reader does not produce. The type check accepts one value, the boolean
    `True`. `GNNTypeChecker` returns `True` for a clean model and `2` for its
    warning sentinel, so equality tests are unsound here — `not 2` is `False`
-   and `False == 0` — and the verdict is an identity check.
+   and `False == 0` — and the verdict is an identity check. A corpus with no
+   specifications is refused rather than skipped, because `validate_gnn_files`
+   reports "nothing to check" as that same `2` sentinel.
 
 Exit status: 0 when the reader and the type check both agree; 1 otherwise, with
 the reason on stderr and a JSON verdict on stdout.
@@ -277,27 +279,45 @@ def typecheck_verdict(result: object) -> None:
     )
 
 
+def require_specs(specs: list[Path]) -> None:
+    """Raise unless there is at least one specification to type-check.
+
+    `validate_gnn_files` reports an empty directory as its `2` warning sentinel
+    ("nothing to do"), so skipping the call on an empty corpus would print
+    `"result": "verified"` without validating anything. A conformance pass has
+    to name the models it checked, so zero specifications is a failure here.
+    """
+    if specs:
+        return
+    raise ConformanceError(
+        "no GNN specifications were discovered (*.gnn.md), so nothing was "
+        "type-checked; the checker reports an empty corpus as its 2 sentinel, "
+        "not as clean success"
+    )
+
+
 def typecheck_specs(repo_root: Path) -> dict:
     """Type-check the specifications the shared reader discovers.
 
     Runs inside the pinned parser environment, so `discover_specs` and the
     type checker come from the pinned revision and the file set is the reader's,
-    not a second glob.
+    not a second glob. An empty corpus is refused: a verified verdict means at
+    least one specification passed the identity check on the boolean `True`.
     """
     from gnn import __version__
     from gnn.importers import discover_specs
     from gnn.type_checker import GNNTypeChecker
 
     specs = discover_specs(repo_root)
-    if specs:
-        with tempfile.TemporaryDirectory(prefix="gnn-conformance-") as output_dir:
-            model_dir = Path(output_dir) / "models"
-            model_dir.mkdir()
-            for index, spec in enumerate(specs):
-                shutil.copy2(spec, model_dir / f"{index:03d}_{spec.name}")
-            typecheck_verdict(
-                GNNTypeChecker().validate_gnn_files(model_dir, Path(output_dir))
-            )
+    require_specs(specs)
+    with tempfile.TemporaryDirectory(prefix="gnn-conformance-") as output_dir:
+        model_dir = Path(output_dir) / "models"
+        model_dir.mkdir()
+        for index, spec in enumerate(specs):
+            shutil.copy2(spec, model_dir / f"{index:03d}_{spec.name}")
+        typecheck_verdict(
+            GNNTypeChecker().validate_gnn_files(model_dir, Path(output_dir))
+        )
 
     return {
         "gnn-version": __version__,

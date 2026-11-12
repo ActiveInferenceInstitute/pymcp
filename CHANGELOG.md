@@ -78,6 +78,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   the message as its status code rather than a fixed status 1. `False`, `2`,
   `1`, `0` and non-booleans now fail with status 1; regression tests are in
   `tests/test_gnn_conformance.py`.
+- GNN conformance corpus: an empty corpus is now a failure instead of a pass.
+  The type-check phase skipped the checker when discovery found no `*.gnn.md`,
+  so the arm printed `"result": "verified"` with `"models": 0` without
+  validating anything — the state `validate_gnn_files` reports as its `2`
+  sentinel. `require_specs` refuses it with status 1 and names the reason, and
+  `TestTypecheckCorpus` pins both the refusal and the non-empty case.
 
 ### Previously recorded
 - CI workflow (`.github/workflows/ci.yml`): installs the frozen lock

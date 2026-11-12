@@ -97,8 +97,11 @@ the specifications the reader discovers (`gnn.importers.discover_specs`) with
 the pinned `GNNTypeChecker` — currently `models/gridworld_3x3.gnn.md`. The type
 check accepts one value, the boolean `True`. Equality tests are unsound here —
 `not 2` is `False` and `False == 0` — so the verdict is an identity check, and
-the warning sentinel `2`, `False`, `1` and `0` all fail the arm. Regression
-tests for those cases live in `tests/test_gnn_conformance.py`.
+the warning sentinel `2`, `False`, `1` and `0` all fail the arm. An empty
+corpus fails too: `validate_gnn_files` reports "no GNN files found" as that
+same `2` sentinel, so the arm refuses to verify a checkout with no
+specification to check. Regression tests for those cases live in
+`tests/test_gnn_conformance.py`.
 
 The arm needs network access the first time it installs the pinned revision;
 after that a revision-matching `.gnn-venv/` is reused and the check is local.
