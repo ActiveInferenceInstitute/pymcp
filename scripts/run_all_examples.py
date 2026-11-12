@@ -6,7 +6,6 @@ This script will start the MCP server and then run all the example scripts
 to test the functionality in the correct sequence.
 """
 
-import asyncio
 import os
 import subprocess
 import sys

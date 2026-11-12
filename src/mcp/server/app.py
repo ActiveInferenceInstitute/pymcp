@@ -4,15 +4,11 @@ MCP Server FastAPI Application.
 This module provides a FastAPI application for the MCP server.
 """
 
-import importlib.util
 import json
 import logging
 import os
-import sys
 import time
 import traceback
-from pathlib import Path
-from typing import Any, Dict
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, Response
@@ -22,7 +18,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from mcp.utils import PyMDPInterface
 
 # Import visualization extension module to add methods to PyMDPInterface
-from mcp.visualization.extensions import _add_visualization_methods
 
 # Create a global instance of the PyMDP interface
 pymdp_interface = PyMDPInterface()
@@ -31,7 +26,7 @@ logger = logging.getLogger("mcp.server")
 
 def create_app():
     """Create the FastAPI application for the MCP server.
-    
+
     Returns
     -------
     FastAPI
@@ -323,9 +318,9 @@ def create_app():
     @app.post("/sessions")
     async def create_session(request: Request):
         """Create a new simulation session.
-        
+
         A session connects an agent with an environment for simulation.
-        
+
         Returns:
             Session information
         """
@@ -391,11 +386,11 @@ def create_app():
     @app.post("/sessions/{session_id}/run")
     async def run_session(session_id: str, request: Request):
         """Run a simulation session for a specified number of steps.
-        
+
         Args:
             session_id: ID of the session to run
             request: Request with simulation parameters
-            
+
         Returns:
             Simulation results
         """
@@ -473,11 +468,11 @@ def create_app():
     @app.get("/sessions/{session_id}/visualize")
     async def visualize_session(session_id: str, format: str = "png"):
         """Visualize a simulation session.
-        
+
         Args:
             session_id: ID of the session to visualize
             format: Output format (png, svg, or json)
-            
+
         Returns:
             Visualization data or error message
         """
@@ -633,7 +628,7 @@ def create_app():
     @app.get("/sessions")
     async def get_sessions():
         """Get all available sessions.
-        
+
         Returns:
             List of session IDs
         """

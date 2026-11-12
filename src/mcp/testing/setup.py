@@ -12,12 +12,12 @@ import matplotlib
 
 def setup_test_environment(use_non_interactive_backend=True):
     """Set up the test environment by configuring paths and matplotlib.
-    
+
     Parameters
     ----------
     use_non_interactive_backend : bool, optional
         Whether to use a non-interactive matplotlib backend, by default True
-    
+
     Returns
     -------
     dict
@@ -49,14 +49,14 @@ def setup_test_environment(use_non_interactive_backend=True):
 
 def setup_output_directories(base_dir=None, create_subdirs=None):
     """Set up output directories for test results.
-    
+
     Parameters
     ----------
     base_dir : str, optional
         Base directory for outputs, by default None (uses 'output' in test directory)
     create_subdirs : list, optional
         List of subdirectories to create, by default None
-    
+
     Returns
     -------
     dict
@@ -91,14 +91,14 @@ def setup_output_directories(base_dir=None, create_subdirs=None):
 
 def clean_output_directory(directory, file_extensions=None):
     """Clean the specified output directory by removing files.
-    
+
     Parameters
     ----------
     directory : str
         Directory to clean
     file_extensions : list, optional
         List of file extensions to remove, by default None (all files)
-    
+
     Returns
     -------
     int

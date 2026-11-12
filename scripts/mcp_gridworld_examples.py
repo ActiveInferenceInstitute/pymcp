@@ -20,7 +20,6 @@ sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(project_root / "src"))
 
 from mcp.client import MCPClient, MCPToolKit
-from mcp.client.config import load_config, save_config
 
 
 # Extend MCPToolKit with improved agent-environment interaction
@@ -36,14 +35,14 @@ class ExtendedMCPToolKit(MCPToolKit):
         output_dir: str = None
     ):
         """Run an agent in an environment with fallback for failures.
-        
+
         Args:
             agent_id: Agent ID
             env_id: Environment ID
             num_steps: Number of steps to run
             save_history: Whether to save history
             output_dir: Directory to save outputs
-            
+
         Returns:
             Simulation results
         """
@@ -289,7 +288,7 @@ async def run_3x3_gridworld(client, toolkit, output_dir):
         try:
             # Try server visualization
             vis_output = os.path.join(grid_dir, "simulation.png")
-            vis_result = await toolkit.visualize_simulation(
+            await toolkit.visualize_simulation(
                 session_id=session_id,
                 output_file=vis_output,
                 include_beliefs=True,

@@ -4,6 +4,10 @@ Visualization Module for PyMDP with MCP.
 This package provides visualization functions for Active Inference models.
 """
 
+# Importing `extensions` is the effect: extensions.py calls
+# `_add_visualization_methods()` at import time, which attaches
+# `plot_belief_dynamics` and `analyze_free_energy` to `PyMDPInterface`.
+from .extensions import _add_visualization_methods as _add_visualization_methods  # noqa: F401
 from .free_energy import (
     visualize_free_energy_components,
     visualize_variational_free_energy,
@@ -27,9 +31,3 @@ __all__ = [
     'visualize_free_energy',
     'create_simulation_animation'
 ]
-
-"""
-Visualization module for the PyMDPInterface class.
-"""
-
-from .extensions import _add_visualization_methods

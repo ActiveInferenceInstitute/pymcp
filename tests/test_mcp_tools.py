@@ -1,14 +1,13 @@
 import asyncio
 import json
 import os
-import shutil
 import sys
 import time
 import unittest
 
 import matplotlib
 import matplotlib.pyplot as plt
-import numpy as np
+import pytest
 
 matplotlib.use('Agg')  # Use non-interactive Agg backend for testing
 
@@ -29,7 +28,6 @@ if src_dir not in sys.path:
 import pymdp
 
 # Now import the actual MCP implementation we created
-from mcp.server.fastmcp import Context, FastMCP
 from mcp.utils import PyMDPInterface
 
 
@@ -363,6 +361,7 @@ class TestMCPTools(unittest.TestCase):
         with open(os.path.join(OUTPUT_DIR, "environment_step_test.json"), "w") as f:
             json.dump(result_obj, f, indent=2)
 
+    @pytest.mark.slow
     def test_run_simulation(self):
         """Test run_simulation tool."""
         # Create a simple agent and environment
@@ -420,6 +419,7 @@ class TestMCPTools(unittest.TestCase):
         with open(os.path.join(OUTPUT_DIR, "simulation_test.json"), "w") as f:
             json.dump(result_obj, f, indent=2)
 
+    @pytest.mark.slow
     def test_visualize_simulation(self):
         """Test visualize_simulation tool."""
         # Create a simple agent and environment and run a simulation first
@@ -647,7 +647,7 @@ class TestMCPTools(unittest.TestCase):
 
         # Get the agent from the interface
         interface = self.ctx.request_context.lifespan_context.pymdp_interface
-        mcp_agent = interface.agents["pymdp_test_agent"]
+        interface.agents["pymdp_test_agent"]
 
         # Perform operations with the agent through the MCP interface
         observation = [0]

@@ -14,7 +14,7 @@ import numpy as np
 
 def compare_matrices(matrix1, matrix2, rtol=1e-5, atol=1e-8):
     """Compare two matrices for approximate equality.
-    
+
     Parameters
     ----------
     matrix1 : list or numpy.ndarray
@@ -25,7 +25,7 @@ def compare_matrices(matrix1, matrix2, rtol=1e-5, atol=1e-8):
         Relative tolerance, by default 1e-5
     atol : float, optional
         Absolute tolerance, by default 1e-8
-    
+
     Returns
     -------
     bool
@@ -46,7 +46,7 @@ def compare_matrices(matrix1, matrix2, rtol=1e-5, atol=1e-8):
 
 def compare_generative_models(model1, model2, rtol=1e-5, atol=1e-8):
     """Compare two generative models for approximate equality.
-    
+
     Parameters
     ----------
     model1 : dict
@@ -57,7 +57,7 @@ def compare_generative_models(model1, model2, rtol=1e-5, atol=1e-8):
         Relative tolerance, by default 1e-5
     atol : float, optional
         Absolute tolerance, by default 1e-8
-    
+
     Returns
     -------
     dict
@@ -156,7 +156,7 @@ def compare_generative_models(model1, model2, rtol=1e-5, atol=1e-8):
 
 def save_test_results(results, output_dir, test_name, include_timestamp=True):
     """Save test results to a file.
-    
+
     Parameters
     ----------
     results : dict
@@ -167,7 +167,7 @@ def save_test_results(results, output_dir, test_name, include_timestamp=True):
         Name of the test
     include_timestamp : bool, optional
         Whether to include a timestamp in the filename, by default True
-    
+
     Returns
     -------
     str
@@ -199,7 +199,7 @@ def save_test_results(results, output_dir, test_name, include_timestamp=True):
 
 def generate_test_report(results_dir, output_file, report_title="Test Results"):
     """Generate a markdown report from test results.
-    
+
     Parameters
     ----------
     results_dir : str
@@ -208,7 +208,7 @@ def generate_test_report(results_dir, output_file, report_title="Test Results"):
         Path to save the report to
     report_title : str, optional
         Title for the report, by default "Test Results"
-    
+
     Returns
     -------
     str
@@ -286,7 +286,7 @@ def generate_test_report(results_dir, output_file, report_title="Test Results"):
 
 def plot_test_results(results, output_file, title="Test Results"):
     """Plot test results visually.
-    
+
     Parameters
     ----------
     results : dict
@@ -295,7 +295,7 @@ def plot_test_results(results, output_file, title="Test Results"):
         Path to save the plot to
     title : str, optional
         Title for the plot, by default "Test Results"
-    
+
     Returns
     -------
     str
@@ -360,12 +360,12 @@ def plot_test_results(results, output_file, title="Test Results"):
 
 def memory_profile(func):
     """Decorator to profile memory usage of a function.
-    
+
     Parameters
     ----------
     func : function
         Function to profile
-    
+
     Returns
     -------
     function

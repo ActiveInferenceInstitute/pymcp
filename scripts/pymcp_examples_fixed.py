@@ -134,14 +134,14 @@ class PyMDPToolkit:
 
     async def run_simulation(self, agent_id, env_id, num_steps=10, save_history=True, planning_horizon=None):
         """Run a simulation with an agent in an environment.
-        
+
         Args:
             agent_id: Agent ID
             env_id: Environment ID
             num_steps: Number of steps to run
             save_history: Whether to save history
             planning_horizon: Planning horizon for policy inference
-            
+
         Returns:
             Simulation results
         """
@@ -253,7 +253,7 @@ class PyMDPToolkit:
 async def run_agent_demo(client, toolkit, output_dir):
     """
     Replicates core functionality from agent_demo.py using the MCP interface.
-    
+
     Creates a simple agent with observation and action modalities, and runs inference.
     """
     print("\n=== Running Agent Demo ===")
@@ -306,7 +306,7 @@ async def run_agent_demo(client, toolkit, output_dir):
 async def run_gridworld_tutorial(client, toolkit, output_dir):
     """
     Replicates core functionality from gridworld_tutorial_2.ipynb using the MCP interface.
-    
+
     Creates a gridworld environment and agent, then runs inference and planning.
     """
     print("\n=== Running Gridworld Tutorial ===")
@@ -380,7 +380,7 @@ async def run_gridworld_tutorial(client, toolkit, output_dir):
 async def run_free_energy_calculation(client, toolkit, output_dir):
     """
     Replicates core functionality from free_energy_calculation.ipynb using the MCP interface.
-    
+
     Demonstrates calculation of variational free energy and its components.
     """
     print("\n=== Running Free Energy Calculation Example ===")
@@ -475,7 +475,7 @@ async def run_free_energy_calculation(client, toolkit, output_dir):
 async def run_agent_loop_example(client, toolkit, output_dir):
     """
     Replicates core functionality from building_up_agent_loop.ipynb using the MCP interface.
-    
+
     Creates a gridworld environment and agent, then runs a full agent-environment loop.
     """
     print("\n=== Running Agent Loop Example ===")
@@ -554,7 +554,7 @@ async def run_agent_loop_example(client, toolkit, output_dir):
         policy_result = await toolkit.infer_policies(agent_id=agent_id)
 
         policy_posterior = policy_result.get("policy_posterior", [0.2] * 5)
-        expected_free_energy = policy_result.get("expected_free_energy", [1.0] * 5)
+        policy_result.get("expected_free_energy", [1.0] * 5)
         print(f"  - Policy posterior: {[round(p, 2) for p in policy_posterior]}")
 
         # 3. Action selection (default to action 0 - no movement)

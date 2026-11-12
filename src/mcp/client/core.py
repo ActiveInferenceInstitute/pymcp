@@ -7,8 +7,7 @@ This module provides the main MCP client implementation for interacting with the
 import asyncio
 import json
 import logging
-import os
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 import aiohttp
 
@@ -19,7 +18,7 @@ logger = logging.getLogger("mcp.client")
 
 class MCPClient:
     """MCP client for interacting with the MCP server.
-    
+
     Parameters
     ----------
     server_url : str, optional
@@ -30,7 +29,7 @@ class MCPClient:
         HTTP session to use, by default None (create a new session)
     config : Dict[str, Any], optional
         Client configuration, by default None (load from file)
-    
+
     Attributes
     ----------
     server_url : str
@@ -101,7 +100,7 @@ class MCPClient:
         headers: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Make a request to the MCP server.
-        
+
         Parameters
         ----------
         method : str
@@ -114,12 +113,12 @@ class MCPClient:
             Query parameters, by default None
         headers : Dict[str, Any], optional
             Request headers, by default None
-        
+
         Returns
         -------
         Dict[str, Any]
             Response data
-        
+
         Raises
         ------
         Exception
@@ -184,7 +183,7 @@ class MCPClient:
 
     async def ping(self) -> Dict[str, Any]:
         """Ping the MCP server to check if it's available.
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -194,7 +193,7 @@ class MCPClient:
 
     async def get_tools(self) -> List[Dict[str, Any]]:
         """Get the list of available tools from the MCP server.
-        
+
         Returns
         -------
         List[Dict[str, Any]]
@@ -205,12 +204,12 @@ class MCPClient:
 
     async def get_tool(self, tool_id: str) -> Dict[str, Any]:
         """Get information about a specific tool.
-        
+
         Parameters
         ----------
         tool_id : str
             Tool ID
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -225,14 +224,14 @@ class MCPClient:
         params: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Call a tool on the MCP server.
-        
+
         Parameters
         ----------
         tool_id : str
             Tool ID
         params : Dict[str, Any]
             Tool parameters
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -248,14 +247,14 @@ class MCPClient:
         model: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Create a new agent on the MCP server.
-        
+
         Parameters
         ----------
         name : str
             Agent name
         model : Dict[str, Any]
             Agent model (generative model)
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -270,7 +269,7 @@ class MCPClient:
 
     async def get_agents(self) -> List[Dict[str, Any]]:
         """Get the list of agents from the MCP server.
-        
+
         Returns
         -------
         List[Dict[str, Any]]
@@ -281,12 +280,12 @@ class MCPClient:
 
     async def get_agent(self, agent_id: str) -> Dict[str, Any]:
         """Get information about a specific agent.
-        
+
         Parameters
         ----------
         agent_id : str
             Agent ID
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -302,7 +301,7 @@ class MCPClient:
         model: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Update an agent on the MCP server.
-        
+
         Parameters
         ----------
         agent_id : str
@@ -311,7 +310,7 @@ class MCPClient:
             Agent name, by default None
         model : Dict[str, Any], optional
             Agent model (generative model), by default None
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -328,12 +327,12 @@ class MCPClient:
 
     async def delete_agent(self, agent_id: str) -> bool:
         """Delete an agent from the MCP server.
-        
+
         Parameters
         ----------
         agent_id : str
             Agent ID
-        
+
         Returns
         -------
         bool
@@ -349,7 +348,7 @@ class MCPClient:
         params: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Create a new environment on the MCP server.
-        
+
         Parameters
         ----------
         name : str
@@ -358,7 +357,7 @@ class MCPClient:
             Environment type
         params : Dict[str, Any]
             Environment parameters
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -374,7 +373,7 @@ class MCPClient:
 
     async def get_environments(self) -> List[Dict[str, Any]]:
         """Get the list of environments from the MCP server.
-        
+
         Returns
         -------
         List[Dict[str, Any]]
@@ -385,12 +384,12 @@ class MCPClient:
 
     async def get_environment(self, env_id: str) -> Dict[str, Any]:
         """Get information about a specific environment.
-        
+
         Parameters
         ----------
         env_id : str
             Environment ID
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -406,7 +405,7 @@ class MCPClient:
         params: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Update an environment on the MCP server.
-        
+
         Parameters
         ----------
         env_id : str
@@ -415,7 +414,7 @@ class MCPClient:
             Environment name, by default None
         params : Dict[str, Any], optional
             Environment parameters, by default None
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -432,12 +431,12 @@ class MCPClient:
 
     async def delete_environment(self, env_id: str) -> bool:
         """Delete an environment from the MCP server.
-        
+
         Parameters
         ----------
         env_id : str
             Environment ID
-        
+
         Returns
         -------
         bool
@@ -453,7 +452,7 @@ class MCPClient:
         params: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Create a new session on the MCP server.
-        
+
         Parameters
         ----------
         agent_id : str
@@ -462,7 +461,7 @@ class MCPClient:
             Environment ID
         params : Dict[str, Any], optional
             Session parameters, by default None
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -481,7 +480,7 @@ class MCPClient:
 
     async def get_sessions(self) -> List[Dict[str, Any]]:
         """Get the list of sessions from the MCP server.
-        
+
         Returns
         -------
         List[Dict[str, Any]]
@@ -492,12 +491,12 @@ class MCPClient:
 
     async def get_session(self, session_id: str) -> Dict[str, Any]:
         """Get information about a specific session.
-        
+
         Parameters
         ----------
         session_id : str
             Session ID
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -513,7 +512,7 @@ class MCPClient:
         params: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Run a session on the MCP server.
-        
+
         Parameters
         ----------
         session_id : str
@@ -522,7 +521,7 @@ class MCPClient:
             Number of steps to run, by default 1
         params : Dict[str, Any], optional
             Run parameters, by default None
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -541,14 +540,14 @@ class MCPClient:
         params: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Reset a session on the MCP server.
-        
+
         Parameters
         ----------
         session_id : str
             Session ID
         params : Dict[str, Any], optional
             Reset parameters, by default None
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -563,12 +562,12 @@ class MCPClient:
 
     async def delete_session(self, session_id: str) -> bool:
         """Delete a session from the MCP server.
-        
+
         Parameters
         ----------
         session_id : str
             Session ID
-        
+
         Returns
         -------
         bool
@@ -585,7 +584,7 @@ class MCPClient:
         params: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Run a simulation on the MCP server.
-        
+
         Parameters
         ----------
         agent_id : str
@@ -596,7 +595,7 @@ class MCPClient:
             Number of steps to run
         params : Dict[str, Any], optional
             Simulation parameters, by default None
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -644,7 +643,7 @@ class MCPClient:
         params: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Visualize an agent on the MCP server.
-        
+
         Parameters
         ----------
         agent_id : str
@@ -653,7 +652,7 @@ class MCPClient:
             Visualization format, by default "png"
         params : Dict[str, Any], optional
             Visualization parameters, by default None
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -680,7 +679,7 @@ class MCPClient:
         params: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Visualize a session on the MCP server.
-        
+
         Parameters
         ----------
         session_id : str
@@ -689,7 +688,7 @@ class MCPClient:
             Visualization format, by default "png"
         params : Dict[str, Any], optional
             Visualization parameters, by default None
-        
+
         Returns
         -------
         Dict[str, Any]

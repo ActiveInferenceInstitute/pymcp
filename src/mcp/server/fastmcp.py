@@ -11,9 +11,8 @@ import json
 import os
 import sys
 import time
-from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List
 
 # Constants
 DEFAULT_HOST = "0.0.0.0"
@@ -35,7 +34,7 @@ class RequestContext:
 class FastMCP:
     """
     FastMCP server implementation.
-    
+
     This class provides a server that exposes MCP tools to clients.
     """
 
@@ -43,13 +42,13 @@ class FastMCP:
                  host: str = None, port: str = None, transport: str = None):
         """
         Initialize an MCP server.
-        
+
         Args:
             name: Name of the MCP server
             description: Description of the MCP server
             lifespan: Async context manager for server lifespan
             host: Host to bind to (for SSE transport)
-            port: Port to listen on (for SSE transport) 
+            port: Port to listen on (for SSE transport)
             transport: Transport protocol ('sse' or 'stdio')
         """
         self.name = name
@@ -68,11 +67,11 @@ class FastMCP:
     def tool(self, name: str = None, description: str = None):
         """
         Decorator to register a function as an MCP tool.
-        
+
         Args:
             name: Optional override for the tool name
             description: Optional description for the tool
-            
+
         Returns:
             Decorator function
         """
@@ -134,11 +133,11 @@ class FastMCP:
     async def handle_request(self, request_data: Dict[str, Any], lifespan_context: Any) -> Dict[str, Any]:
         """
         Handle an incoming MCP request.
-        
+
         Args:
             request_data: The request data
             lifespan_context: The lifespan context
-            
+
         Returns:
             Response data
         """
@@ -183,7 +182,7 @@ class FastMCP:
     async def get_schema(self) -> Dict[str, Any]:
         """
         Get the OpenAPI schema for the MCP server.
-        
+
         Returns:
             OpenAPI schema
         """

@@ -12,7 +12,6 @@ import unittest
 from contextlib import asynccontextmanager
 
 import matplotlib
-import numpy as np
 
 matplotlib.use('Agg')  # Use non-interactive Agg backend for testing
 

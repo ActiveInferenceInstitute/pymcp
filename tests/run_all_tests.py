@@ -7,13 +7,10 @@ It combines functionality from both run_tests.py and run_and_organize.sh.
 """
 
 import argparse
-import glob
 import json
-import os
 import shutil
 import subprocess
 import sys
-import time
 from datetime import datetime
 from pathlib import Path
 

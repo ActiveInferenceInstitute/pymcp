@@ -1,11 +1,11 @@
 import json
 import os
 import sys
-import time
 import unittest
 
 import matplotlib
 import numpy as np
+import pytest
 
 matplotlib.use('Agg')  # Use non-interactive Agg backend for testing
 
@@ -28,7 +28,6 @@ import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 
 # Import real PyMDP for comparison
-import pymdp
 from matplotlib.colors import LinearSegmentedColormap
 
 from mcp.utils import PyMDPInterface
@@ -279,6 +278,7 @@ class TestAgentVisualization(unittest.TestCase):
 
         return output_file
 
+    @pytest.mark.slow
     def test_simple_agent_visualization(self):
         """Test creating and visualizing a simple agent with 2D state space"""
         # Create a simple agent
@@ -303,7 +303,7 @@ class TestAgentVisualization(unittest.TestCase):
         }
 
         # Create agent
-        result = self.pymdp_interface.create_agent("simple_agent", generative_model)
+        self.pymdp_interface.create_agent("simple_agent", generative_model)
 
         # Visualize generative model even if agent creation fails
         output_file = os.path.join(GEN_MODEL_DIR, "simple_agent_generative_model.png")
@@ -313,6 +313,7 @@ class TestAgentVisualization(unittest.TestCase):
         self.assertTrue(os.path.exists(output_file))
         self.assertGreater(os.path.getsize(output_file), 0)
 
+    @pytest.mark.slow
     def test_multi_modality_agent_visualization(self):
         """Test creating and visualizing an agent with multiple observation modalities"""
         # Create a multi-modality agent (two observation modalities, one state factor)
@@ -355,7 +356,7 @@ class TestAgentVisualization(unittest.TestCase):
         }
 
         # Create agent
-        result = self.pymdp_interface.create_agent("multi_modality_agent", generative_model)
+        self.pymdp_interface.create_agent("multi_modality_agent", generative_model)
 
         # Visualize generative model even if agent creation fails
         output_file = os.path.join(GEN_MODEL_DIR, "multi_modality_agent_generative_model.png")
@@ -365,6 +366,7 @@ class TestAgentVisualization(unittest.TestCase):
         self.assertTrue(os.path.exists(output_file))
         self.assertGreater(os.path.getsize(output_file), 0)
 
+    @pytest.mark.slow
     def test_grid_world_simulation_visualization(self):
         """Test running and visualizing a grid world simulation"""
         # Create a simpler grid world agent and environment (3x3 instead of 5x5)
@@ -463,7 +465,7 @@ class TestAgentVisualization(unittest.TestCase):
                     vis_output_dir = os.path.join(os.path.dirname(OUTPUT_DIR), "output", "visualization")
                     os.makedirs(vis_output_dir, exist_ok=True)
                     sim_file = os.path.join(vis_output_dir, "grid_agent_simulation.png")
-                    viz_result = self.pymdp_interface.visualize_simulation(history_key, sim_file)
+                    self.pymdp_interface.visualize_simulation(history_key, sim_file)
 
                     # Verify files were created
                     for file in [belief_file, sim_file]:
@@ -508,7 +510,7 @@ class TestAgentVisualization(unittest.TestCase):
         }
 
         # Create agent
-        result = self.pymdp_interface.create_agent("fe_agent", generative_model)
+        self.pymdp_interface.create_agent("fe_agent", generative_model)
 
         # Create a simple simulation history with mock free energy components
         history = {
@@ -556,7 +558,7 @@ class TestAgentVisualization(unittest.TestCase):
 
         # Also create a standard simulation visualization which should include free energy
         fig_path = os.path.join(OUTPUT_DIR, "fe_simulation_viz.png")
-        result = self.pymdp_interface.visualize_simulation("fe_agent_simulation", fig_path)
+        self.pymdp_interface.visualize_simulation("fe_agent_simulation", fig_path)
 
         # Verify additional files are created in free_energy directory
         fe_files = os.listdir(FREE_ENERGY_DIR)

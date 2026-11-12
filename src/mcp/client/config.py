@@ -30,12 +30,12 @@ DEFAULT_CONFIG = {
 
 def get_config_path() -> Path:
     """Get the path to the configuration file.
-    
+
     Looks for configuration in the following places (in order):
     1. Path specified in MCP_CONFIG_PATH environment variable
     2. .mcp/config.json in the user's home directory
     3. .mcp.json in the current working directory
-    
+
     Returns
     -------
     Path
@@ -61,12 +61,12 @@ def get_config_path() -> Path:
 
 def load_config(config_path: Optional[Path] = None) -> Dict[str, Any]:
     """Load the MCP client configuration.
-    
+
     Parameters
     ----------
     config_path : Path, optional
         Path to the configuration file, by default None (auto-detect)
-    
+
     Returns
     -------
     Dict[str, Any]
@@ -95,14 +95,14 @@ def load_config(config_path: Optional[Path] = None) -> Dict[str, Any]:
 
 def save_config(config: Dict[str, Any], config_path: Optional[Path] = None) -> bool:
     """Save the MCP client configuration.
-    
+
     Parameters
     ----------
     config : Dict[str, Any]
         Configuration dictionary
     config_path : Path, optional
         Path to the configuration file, by default None (auto-detect)
-    
+
     Returns
     -------
     bool
@@ -131,14 +131,14 @@ def save_config(config: Dict[str, Any], config_path: Optional[Path] = None) -> b
 
 def merge_configs(base_config: Dict[str, Any], override_config: Dict[str, Any]) -> Dict[str, Any]:
     """Merge two configuration dictionaries.
-    
+
     Parameters
     ----------
     base_config : Dict[str, Any]
         Base configuration dictionary
     override_config : Dict[str, Any]
         Override configuration dictionary
-    
+
     Returns
     -------
     Dict[str, Any]
@@ -156,12 +156,12 @@ def merge_configs(base_config: Dict[str, Any], override_config: Dict[str, Any]) 
 
 def get_server_url(config: Optional[Dict[str, Any]] = None) -> str:
     """Get the server URL from configuration.
-    
+
     Parameters
     ----------
     config : Dict[str, Any], optional
         Configuration dictionary, by default None (load from file)
-    
+
     Returns
     -------
     str

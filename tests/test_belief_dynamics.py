@@ -6,7 +6,7 @@ import os
 import sys
 import unittest
 
-import numpy as np
+import pytest
 
 # Add the src directory to the path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
@@ -15,7 +15,6 @@ import matplotlib
 
 # Use non-interactive backend
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 
 from mcp.belief_dynamics import (
     calculate_belief_statistics,
@@ -58,6 +57,7 @@ class TestBeliefDynamics(unittest.TestCase):
         self.assertEqual(empty_timesteps, 0)
         self.assertEqual(len(empty_beliefs), 0)
 
+    @pytest.mark.slow
     def test_create_belief_dynamics_visualization(self):
         """Test creating belief dynamics visualization."""
         # Define the base output directory
@@ -85,7 +85,7 @@ class TestBeliefDynamics(unittest.TestCase):
         ]
 
         custom_output = os.path.join(belief_output_dir, 'test_belief_custom_labels.png')
-        custom_vis_path = create_belief_dynamics_visualization(
+        create_belief_dynamics_visualization(
             self.sample_history,
             custom_output,
             custom_state_labels=custom_labels

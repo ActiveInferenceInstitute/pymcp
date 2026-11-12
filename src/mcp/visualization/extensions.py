@@ -3,7 +3,7 @@ Extension module to add visualization methods to PyMDPInterface.
 """
 
 import os
-from typing import Any, Dict, List
+from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,11 +19,11 @@ def _add_visualization_methods():
     def plot_belief_dynamics(self, session_id: str, output_file: str = "belief_dynamics.png") -> Dict:
         """
         Generate a visualization of belief dynamics over time for a session.
-        
+
         Args:
             session_id: The ID of the session to visualize
             output_file: Filename for the output visualization
-            
+
         Returns:
             Dict with visualization info and file path
         """
@@ -115,11 +115,11 @@ def _add_visualization_methods():
     def analyze_free_energy(self, session_id: str, output_file: str = "free_energy.png") -> Dict:
         """
         Analyze and visualize free energy components from a session.
-        
+
         Args:
             session_id: The ID of the session to analyze
             output_file: Filename for the output visualization
-            
+
         Returns:
             Dict with analysis results and file path
         """

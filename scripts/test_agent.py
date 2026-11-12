@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 
-import os
-import sys
 
 import numpy as np
-import pymdp.utils as utils
 from pymdp.agent import Agent
 
 

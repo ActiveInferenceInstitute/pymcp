@@ -42,6 +42,9 @@ packages = ["src/mcp"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
+markers = [
+    "slow: runs a full PyMDP simulation or visualization and dominates suite wall time; deselected by `./run.sh test`",
+]
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::UserWarning"
@@ -60,3 +63,11 @@ unfixable = ["F401"]
 [tool.ruff.lint.isort]
 known-first-party = ["mcp"]
 known-third-party = ["pymdp", "numpy", "matplotlib", "aiohttp", "fastapi", "pydantic"]
+
+[tool.ruff.lint.per-file-ignores]
+# Test modules and example scripts put `src/` (and pick the matplotlib backend)
+# before importing project modules, so those imports cannot be at the top of the
+# file. The pattern is structural, not sloppiness, so it is exempted once here
+# instead of scattering `# noqa: E402` through the tree.
+"tests/*" = ["E402"]
+"scripts/*" = ["E402"]

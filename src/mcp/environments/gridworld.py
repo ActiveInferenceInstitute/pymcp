@@ -9,7 +9,7 @@ import numpy as np
 
 class GridWorldEnvironment:
     """Grid world environment for Active Inference agents.
-    
+
     Parameters
     ----------
     grid_size : list
@@ -18,7 +18,7 @@ class GridWorldEnvironment:
         List of reward locations [[row, col], ...]
     start_position : list, optional
         Starting position [row, col], by default [0, 0]
-    
+
     Attributes
     ----------
     grid_size : list
@@ -53,12 +53,12 @@ class GridWorldEnvironment:
 
     def reset(self, start_position=None):
         """Reset the environment to initial state.
-        
+
         Parameters
         ----------
         start_position : list, optional
             Starting position [row, col], by default None (use current start position)
-        
+
         Returns
         -------
         dict
@@ -73,12 +73,12 @@ class GridWorldEnvironment:
 
     def step(self, action):
         """Take a step in the environment.
-        
+
         Parameters
         ----------
         action : int or list
             Action to take (0=UP, 1=RIGHT, 2=DOWN, 3=LEFT)
-        
+
         Returns
         -------
         dict
@@ -110,7 +110,7 @@ class GridWorldEnvironment:
 
     def get_observation(self):
         """Get the current observation from the environment.
-        
+
         Returns
         -------
         dict
@@ -142,12 +142,12 @@ class GridWorldEnvironment:
 
     def get_state_index(self, position=None):
         """Get the state index for a position.
-        
+
         Parameters
         ----------
         position : list, optional
             Position [row, col], by default None (use current position)
-        
+
         Returns
         -------
         int
@@ -160,12 +160,12 @@ class GridWorldEnvironment:
 
     def get_position_from_index(self, index):
         """Get the position from a state index.
-        
+
         Parameters
         ----------
         index : int
             State index
-        
+
         Returns
         -------
         list
@@ -178,12 +178,12 @@ class GridWorldEnvironment:
 
     def get_valid_actions(self, position=None):
         """Get valid actions from a position.
-        
+
         Parameters
         ----------
         position : list, optional
             Position [row, col], by default None (use current position)
-        
+
         Returns
         -------
         list
@@ -209,7 +209,7 @@ class GridWorldEnvironment:
 
     def get_random_action(self):
         """Get a random valid action.
-        
+
         Returns
         -------
         int
@@ -220,7 +220,7 @@ class GridWorldEnvironment:
 
     def has_reached_reward(self):
         """Check if agent has reached a reward location.
-        
+
         Returns
         -------
         bool
@@ -230,9 +230,9 @@ class GridWorldEnvironment:
 
     def is_terminal(self):
         """Check if current state is terminal.
-        
+
         In this implementation, reaching a reward location is a terminal state.
-        
+
         Returns
         -------
         bool
@@ -242,12 +242,12 @@ class GridWorldEnvironment:
 
     def render(self, mode='ascii'):
         """Render the environment.
-        
+
         Parameters
         ----------
         mode : str, optional
             Rendering mode, by default 'ascii'
-        
+
         Returns
         -------
         str
@@ -280,7 +280,7 @@ class GridWorldEnvironment:
 
     def to_dict(self):
         """Convert environment to dictionary representation.
-        
+
         Returns
         -------
         dict
@@ -297,10 +297,10 @@ class GridWorldEnvironment:
 
 def create_grid_world_env(name, grid_size, reward_locations, start_position=None):
     """Create a grid world environment.
-    
+
     This is a convenience function that returns both the environment object
     and a dictionary representation for the MCP interface.
-    
+
     Parameters
     ----------
     name : str
@@ -311,7 +311,7 @@ def create_grid_world_env(name, grid_size, reward_locations, start_position=None
         List of reward locations [[row, col], ...]
     start_position : list, optional
         Starting position [row, col], by default None
-    
+
     Returns
     -------
     tuple

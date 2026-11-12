@@ -4,17 +4,16 @@ Custom Environment for PyMDP with MCP.
 This module provides a custom environment implementation for Active Inference agents.
 """
 
-from collections import defaultdict
 
 import numpy as np
 
 
 class CustomEnvironment:
     """Custom environment for Active Inference agents.
-    
+
     This environment allows for defining arbitrary states, observations,
     transitions, and rewards for simulating complex environments.
-    
+
     Parameters
     ----------
     name : str
@@ -29,7 +28,7 @@ class CustomEnvironment:
         Dictionary mapping states to reward values
     current_state : str, optional
         Initial state, by default None (use first state in list)
-    
+
     Attributes
     ----------
     name : str
@@ -77,10 +76,10 @@ class CustomEnvironment:
 
     def _create_state_observation_mapping(self):
         """Create mapping from states to observations.
-        
+
         By default, we create a simple mapping where each state emits a specific observation
         and potentially a reward observation if the state has a reward.
-        
+
         Returns
         -------
         dict
@@ -131,12 +130,12 @@ class CustomEnvironment:
 
     def reset(self, state=None):
         """Reset the environment to initial state.
-        
+
         Parameters
         ----------
         state : str, optional
             Initial state, by default None (use first state in list)
-        
+
         Returns
         -------
         dict
@@ -151,12 +150,12 @@ class CustomEnvironment:
 
     def step(self, action):
         """Take a step in the environment.
-        
+
         Parameters
         ----------
         action : str, int, or list
             Action to take (can be action name, index, or list containing either)
-        
+
         Returns
         -------
         dict
@@ -180,7 +179,7 @@ class CustomEnvironment:
 
     def get_observation(self):
         """Get the current observation from the environment.
-        
+
         Returns
         -------
         dict
@@ -207,12 +206,12 @@ class CustomEnvironment:
 
     def get_valid_actions(self, state=None):
         """Get valid actions from a state.
-        
+
         Parameters
         ----------
         state : str, optional
             State name, by default None (use current state)
-        
+
         Returns
         -------
         list
@@ -228,12 +227,12 @@ class CustomEnvironment:
 
     def get_valid_action_indices(self, state=None):
         """Get valid action indices from a state.
-        
+
         Parameters
         ----------
         state : str, optional
             State name, by default None (use current state)
-        
+
         Returns
         -------
         list
@@ -245,12 +244,12 @@ class CustomEnvironment:
 
     def get_random_action(self, state=None):
         """Get a random valid action from a state.
-        
+
         Parameters
         ----------
         state : str, optional
             State name, by default None (use current state)
-        
+
         Returns
         -------
         str
@@ -264,12 +263,12 @@ class CustomEnvironment:
 
     def has_reward(self, state=None):
         """Check if a state has a reward.
-        
+
         Parameters
         ----------
         state : str, optional
             State name, by default None (use current state)
-        
+
         Returns
         -------
         bool
@@ -282,14 +281,14 @@ class CustomEnvironment:
 
     def is_terminal(self, state=None):
         """Check if a state is terminal.
-        
+
         In this implementation, states with no outgoing transitions are terminal.
-        
+
         Parameters
         ----------
         state : str, optional
             State name, by default None (use current state)
-        
+
         Returns
         -------
         bool
@@ -304,12 +303,12 @@ class CustomEnvironment:
 
     def render(self, mode='text'):
         """Render the environment.
-        
+
         Parameters
         ----------
         mode : str, optional
             Rendering mode, by default 'text'
-        
+
         Returns
         -------
         str
@@ -338,7 +337,7 @@ class CustomEnvironment:
 
     def to_dict(self):
         """Convert environment to dictionary representation.
-        
+
         Returns
         -------
         dict
@@ -356,10 +355,10 @@ class CustomEnvironment:
 
 def create_custom_env(name, states, observations, transitions=None, rewards=None, current_state=None):
     """Create a custom environment.
-    
+
     This is a convenience function that returns both the environment object
     and a dictionary representation for the MCP interface.
-    
+
     Parameters
     ----------
     name : str
@@ -374,7 +373,7 @@ def create_custom_env(name, states, observations, transitions=None, rewards=None
         Dictionary mapping states to reward values, by default None
     current_state : str, optional
         Initial state, by default None
-    
+
     Returns
     -------
     tuple
