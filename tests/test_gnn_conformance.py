@@ -10,6 +10,8 @@ cover only what this repository still owns:
   the parser version, or a same-version pin change silently reuses old code;
 * the type-check verdict, where equality tests accept a failure (`False == 0`)
   and a warning sentinel (`1 == True`), so only an identity check is correct;
+* the corpus guard, because the checker reports "no files found" as its `2`
+  sentinel and skipping the call would verify nothing;
 * the reader invocation, which is the contract's arm and must not silently lose
   its pointer requirements.
 
@@ -19,11 +21,13 @@ in the ordinary project environment.
 """
 
 import importlib.util
+import io
 import json
 import re
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -64,6 +68,22 @@ class TestTypecheckVerdict(unittest.TestCase):
             with self.subTest(result=result):
                 with self.assertRaises(SystemExit):
                     gnn_conformance.typecheck_verdict(result)
+
+
+class TestTypecheckCorpus(unittest.TestCase):
+    def test_a_corpus_with_specifications_is_accepted(self):
+        gnn_conformance.require_specs([Path("models/gridworld_3x3.gnn.md")])
+
+    def test_no_specifications_is_refused(self):
+        # The gate used to skip the checker when discovery found nothing, so an
+        # empty corpus printed `"result": "verified"` with `"models": 0` while
+        # `validate_gnn_files` would have returned its `2` "nothing to check"
+        # sentinel. Nothing validated must not read as a conformance pass.
+        buffer = io.StringIO()
+        with self.assertRaises(SystemExit) as raised, redirect_stderr(buffer):
+            gnn_conformance.require_specs([])
+        self.assertEqual(raised.exception.code, 1)
+        self.assertIn("no GNN specifications", buffer.getvalue())
 
 
 class TestParserReuse(unittest.TestCase):

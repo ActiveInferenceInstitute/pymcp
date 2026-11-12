@@ -50,6 +50,11 @@ is `False`, and `False == 0`, so a truthiness or membership test would pass on a
 warning or a failure. `2`, `False`, `1` and `0` all fail the job;
 `tests/test_gnn_conformance.py` pins those cases.
 
+A corpus with no specifications is also a failure, not a skip:
+`validate_gnn_files` reports "no GNN files found" as that same `2` sentinel, so
+the arm refuses to print a verified verdict with nothing checked. A green GNN
+job means at least one `*.gnn.md` specification passed the identity check.
+
 The first run needs network access to install the pinned revision; after that
 `.gnn-venv/` is reused and the check is local. See the
 [Run Guide](../docs/RUN_GUIDE.md) for the full gate.
