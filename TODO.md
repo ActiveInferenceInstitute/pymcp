@@ -175,12 +175,18 @@ Last reviewed: 2026-11-12 (gate entry point, CI dedup, lint retirement, docs ind
 ## Known caveats (recorded 2026-11-11, docs pass 3)
 
 - [x] ✓ **GNN conformance warning sentinel is truthy — resolved 2026-11-12.**
-  The check moved out of the workflow into `scripts/gnn_conformance.py`
-  (`./run.sh gnn`). It compares the type-check result explicitly against the
-  clean values (`True`, `0`) and fails on the warning sentinel `2`, so
-  truthiness no longer decides the verdict. The repo sketch
-  (`models/gridworld_3x3.gnn.md`) returns a clean `True`; the clean value is
-  asserted rather than assumed.
+  The type-check verdict in `scripts/gnn_conformance.py` (`./run.sh gnn`) is an
+  identity check on the boolean `True`; the warning sentinel `2`, `False`, `1`
+  and `0` all fail the arm, so truthiness no longer decides the verdict. The
+  repo sketch (`models/gridworld_3x3.gnn.md`) returns a clean `True`; the clean
+  value is asserted rather than assumed.
+- [x] ✓ **GNN–FEP shared reader adopted 2026-11-12.** The pin moved from
+  `v5.0.3` (`8f293d9b`) to `v5.1.0` (`75c834bd8519`), the revision that ships
+  `src/gnn/importers.py`. `./run.sh gnn` now runs
+  `python -m gnn.importers check --repo . --require-pointer --workflow
+  .github/workflows/ci.yml --job gnn-conformance` in the materialized
+  `.gnn-venv/`; the local pin reader, its exemplar fallback and the pin-shape
+  tests are gone, and the type check of the discovered specifications stays.
 
 ---
 

@@ -14,7 +14,7 @@ command is spelled out a second time in YAML, in this page, or in a script.
 | `test-full` | `./run.sh test-full` | `uv run --frozen python -m pytest tests/ -q` |
 | `links` | `./run.sh links` | `scripts/check_docs.py` — Markdown relative links + `docs/` index coverage |
 | `docs` | `./run.sh docs` | `links`, then `scripts/gate_facts.py --check` (generated facts are current) |
-| `gnn` | `./run.sh gnn` | `scripts/gnn_conformance.py` — pinned GNN parser conformance |
+| `gnn` | `./run.sh gnn` | `scripts/gnn_conformance.py` — the shared `gnn.importers` reader in the pinned parser environment, then a type check |
 | `all` | `./run.sh all` | `lint`, `test-full`, `docs`, `gnn` |
 
 Run `./run.sh --help` for the same list from the script itself.
@@ -64,24 +64,41 @@ own `.gnn-venv/` (gitignored) for the parser.
 
 ## The GNN arm
 
-`./run.sh gnn` runs `scripts/gnn_conformance.py`, which reads the canonical pin
-file `.github/gnn-pin.json` — schema `gnn-importer-pin/v1`, repository
-`ActiveInferenceInstitute/Generalized_Notation_Notation`, tag `v5.0.3`,
-revision `8f293d9ba810e6eda5c09842d9c7ed9ffa5f92c1` (recorded 2026-11-12). It
-verifies the pin fields and installs that exact commit into `.gnn-venv/`.
+`./run.sh gnn` runs `scripts/gnn_conformance.py`. The canonical pin file
+`.github/gnn-pin.json` — schema `gnn-importer-pin/v1`, repository
+`ActiveInferenceInstitute/Generalized_Notation_Notation`, tag `v5.1.0`,
+revision `75c834bd8519dc7b5adc4d24f16bf393cfd1ecdf` (recorded 2026-11-12) —
+supplies the commit the script installs into `.gnn-venv/`. That single key is
+the environment bootstrap: every other question about the pin belongs to the
+shared reader, which cannot run until the pinned revision exists.
 
 Reuse of `.gnn-venv/` is bound to the **revision**, not just the version: the
 installed parser's `direct_url.json` commit must equal the pin revision, so a
 same-version pin change reinstalls instead of silently testing older code.
 
-What it parses is documented in [`../.github/GNN.md`](../.github/GNN.md): every
-`*.gnn.md` sketch in the repository (currently `models/gridworld_3x3.gnn.md`),
-and the pinned upstream `input/gnn_files/basics/static_perception.md` exemplar
-when the repository has no sketch. The type check accepts one value, the
-boolean `True`. Equality tests are unsound here — `not 2` is `False` and
-`False == 0` — so the verdict is an identity check, and the warning sentinel
-`2`, `False`, `1` and `0` all fail the arm. Regression tests for those cases
-live in `tests/test_gnn_conformance.py`.
+Inside that environment the arm runs the reader the pin names:
+
+```bash
+python -m gnn.importers check --repo . --require-pointer \
+    --workflow .github/workflows/ci.yml --job gnn-conformance
+```
+
+It owns pin discovery and shape, the pin's declared repository/tag/revision, the
+[`.github/GNN.md`](../.github/GNN.md) pointer, and the syntax validation of every
+`*.gnn.md` specification with the pinned parser. This is the
+[GNN–FEP shared-reader contract](https://github.com/ActiveInferenceInstitute/Generalized_Notation_Notation/blob/main/docs/workflows/gnn-fep.md)
+member row: the call is made from the already-materialized pinned environment,
+and no copy of the reader exists in this checkout. The pin was `v5.0.3`
+(`8f293d9ba810e6eda5c09842d9c7ed9ffa5f92c1`) until 2026-11-12; that revision
+predates `src/gnn/importers.py`, so adoption was blocked until the pin moved.
+
+The reader validates syntax, not model semantics, so the arm then type-checks
+the specifications the reader discovers (`gnn.importers.discover_specs`) with
+the pinned `GNNTypeChecker` — currently `models/gridworld_3x3.gnn.md`. The type
+check accepts one value, the boolean `True`. Equality tests are unsound here —
+`not 2` is `False` and `False == 0` — so the verdict is an identity check, and
+the warning sentinel `2`, `False`, `1` and `0` all fail the arm. Regression
+tests for those cases live in `tests/test_gnn_conformance.py`.
 
 The arm needs network access the first time it installs the pinned revision;
 after that a revision-matching `.gnn-venv/` is reused and the check is local.

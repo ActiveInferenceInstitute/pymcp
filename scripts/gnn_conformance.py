@@ -1,29 +1,37 @@
 #!/usr/bin/env python3
-"""Pinned GNN conformance check.
+"""Pinned GNN conformance check — the shared reader, run in the pinned parser.
 
-This script is the single source of truth for the `gnn conformance (pinned)`
-CI job: `.github/workflows/ci.yml` runs `./run.sh gnn`, which runs this file.
-Nothing about the check lives in YAML.
+This script is the launch shim for the `gnn conformance (pinned)` CI job:
+`.github/workflows/ci.yml` runs `./run.sh gnn`, which runs this file. Nothing
+about the check lives in YAML.
 
 What it does, in order:
 
-1. Read `.github/gnn-pin.json` and verify its schema (`gnn-importer-pin/v1`),
-   repository, tag and revision.
-2. Install the pinned parser into an isolated `.gnn-venv/` (never the project
+1. Read the revision `.github/gnn-pin.json` records, because the pinned parser
+   has to be materialized before the reader that validates the pin can run.
+   Only that one key is read here: every other pin question (schema, declared
+   repository, tag, commit shape, specification list, pointer) belongs to
+   `gnn.importers`, which is what step 3 runs.
+2. Install that revision into an isolated `.gnn-venv/` (never the project
    environment, so `uv run --frozen` cannot prune it) and reuse it only when the
-   recorded version *and* git commit match the pin revision, so a same-version
-   pin change cannot silently reuse older code.
-3. Parse and syntax-validate every `*.gnn.md` sketch in the repository and
-   type-check them. When the repository has no sketch, parse the pinned
-   upstream `input/gnn_files/basics/static_perception.md` exemplar instead.
+   installed distribution's recorded git commit equals the revision from step 1,
+   so a same-version pin change cannot silently reuse older code.
+3. Run the shared reader from that environment:
 
-The type check accepts one value: the boolean `True`. `GNNTypeChecker` returns
-`True` for a clean model and `2` for its warning sentinel, so equality tests are
-unsound here — `not 2` is `False` and `False == 0` — and the verdict is
-therefore an identity check.
+       python -m gnn.importers check --repo . --require-pointer \\
+           --workflow .github/workflows/ci.yml --job gnn-conformance
 
-Exit status: 0 when the pin, parser and sketches agree; 1 otherwise, with the
-reason on stderr and a JSON verdict on stdout.
+   It owns pin discovery and shape, pin and pointer validation, and the syntax
+   validation of every `*.gnn.md` specification with the pinned parser.
+4. Type-check the specifications the reader discovers, with the pinned
+   `GNNTypeChecker`: conformance for this member includes the semantic verdict
+   the reader does not produce. The type check accepts one value, the boolean
+   `True`. `GNNTypeChecker` returns `True` for a clean model and `2` for its
+   warning sentinel, so equality tests are unsound here — `not 2` is `False`
+   and `False == 0` — and the verdict is an identity check.
+
+Exit status: 0 when the reader and the type check both agree; 1 otherwise, with
+the reason on stderr and a JSON verdict on stdout.
 """
 
 from __future__ import annotations
@@ -34,16 +42,31 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import urllib.request
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PIN_PATH = Path(".github/gnn-pin.json")
 PARSER_ENV = ".gnn-venv"
-PIN_SCHEMA = "gnn-importer-pin/v1"
 PARSER_DEPS = ("defusedxml", "psutil", "pyyaml")
-EXEMPLAR = "input/gnn_files/basics/static_perception.md"
-SKIP_DIRS = frozenset({".git", ".venv", PARSER_ENV, "node_modules", "__pycache__"})
+
+#: The conformance job this repository's pointer must name, from
+#: `.github/workflows/ci.yml` and the estate registry.
+WORKFLOW = ".github/workflows/ci.yml"
+JOB_KEY = "gnn-conformance"
+
+#: The shared reader, called against this checkout.
+READER_ARGS = (
+    "-m",
+    "gnn.importers",
+    "check",
+    "--repo",
+    ".",
+    "--require-pointer",
+    "--workflow",
+    WORKFLOW,
+    "--job",
+    JOB_KEY,
+)
 
 
 def log(message: str) -> None:
@@ -68,44 +91,34 @@ def run(args: list[str], *, cwd: Path) -> None:
     )
 
 
-def load_pin(repo_root: Path) -> dict:
+def pinned_revision(repo_root: Path) -> str:
+    """The upstream revision recorded in `.github/gnn-pin.json`.
+
+    This is the environment's input, not a second reader: the installed parser
+    cannot validate a pin before it exists, so one key is taken from the file
+    and the reader judges everything else about it afterwards.
+    """
     pin_file = repo_root / PIN_PATH
     try:
-        pin = json.loads(pin_file.read_text(encoding="utf-8"))
-    except OSError as exc:
+        payload = json.loads(pin_file.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError) as exc:
         raise ConformanceError(f"cannot read {PIN_PATH}: {exc}") from exc
     except json.JSONDecodeError as exc:
         raise ConformanceError(f"{PIN_PATH} is not valid JSON: {exc}") from exc
-
-    if not isinstance(pin, dict):
+    if not isinstance(payload, dict):
         raise ConformanceError(f"{PIN_PATH} must be a JSON object")
 
-    required = ("schema", "repository", "revision", "tag")
-    missing = [key for key in required if not pin.get(key)]
-    if missing:
-        raise ConformanceError(f"{PIN_PATH} is missing {', '.join(missing)}")
-    non_strings = [key for key in required if not isinstance(pin[key], str)]
-    if non_strings:
-        raise ConformanceError(
-            f"{PIN_PATH} fields must be strings: {', '.join(non_strings)}"
-        )
-    if pin["schema"] != PIN_SCHEMA:
-        raise ConformanceError(
-            f"{PIN_PATH} schema is {pin['schema']!r}, expected {PIN_SCHEMA!r}"
-        )
-    if len(pin["revision"]) != 40 or any(
-        c not in "0123456789abcdef" for c in pin["revision"]
-    ):
-        raise ConformanceError(
-            f"{PIN_PATH} revision {pin['revision']!r} is not a 40-hex commit"
-        )
-    return pin
+    revision = payload.get("commit") or payload.get("revision")
+    if not isinstance(revision, str) or not revision.strip():
+        raise ConformanceError(f"{PIN_PATH} records no commit/revision")
+    return revision.strip()
 
 
-def parser_spec(pin: dict) -> str:
+def parser_spec(revision: str) -> str:
     return (
-        f"generalized-notation-notation @ "
-        f"git+https://github.com/{pin['repository']}.git@{pin['revision']}"
+        "generalized-notation-notation @ "
+        "git+https://github.com/ActiveInferenceInstitute/"
+        f"Generalized_Notation_Notation.git@{revision}"
     )
 
 
@@ -152,16 +165,14 @@ def installed_record(python: Path) -> dict | None:
         return None
 
 
-def reuse_ok(record: dict | None, pin: dict) -> bool:
-    """Reuse the parser env only for this exact pin: version *and* revision."""
+def reuse_ok(record: dict | None, revision: str) -> bool:
+    """Reuse the parser env only for this exact revision."""
     if not record:
         return False
-    return record.get("version") == pin["tag"].removeprefix("v") and record.get(
-        "commit"
-    ) == pin["revision"]
+    return record.get("commit") == revision
 
 
-def ensure_parser(repo_root: Path, pin: dict) -> Path:
+def ensure_parser(repo_root: Path, revision: str) -> Path:
     """Create/reuse the isolated parser environment and pin its parser."""
     python = venv_python(repo_root)
 
@@ -180,7 +191,7 @@ def ensure_parser(repo_root: Path, pin: dict) -> Path:
             ) from exc
 
     record = installed_record(python)
-    if reuse_ok(record, pin):
+    if reuse_ok(record, revision):
         log(
             f"reusing {PARSER_ENV}: gnn {record['version']} "
             f"at {record['commit']} matches the pin"
@@ -190,11 +201,10 @@ def ensure_parser(repo_root: Path, pin: dict) -> Path:
     if record:
         log(
             f"reinstalling: {PARSER_ENV} holds gnn {record.get('version')} at "
-            f"{record.get('commit')} but the pin is {pin['tag']} at "
-            f"{pin['revision']}"
+            f"{record.get('commit')} but the pin is {revision}"
         )
 
-    log(f"installing pinned parser {pin['repository']}@{pin['revision']}")
+    log(f"installing the pinned parser at {revision}")
     try:
         run(
             [
@@ -215,7 +225,7 @@ def ensure_parser(repo_root: Path, pin: dict) -> Path:
                 "--python",
                 str(python),
                 "--no-deps",
-                parser_spec(pin),
+                parser_spec(revision),
             ],
             cwd=repo_root,
         )
@@ -223,29 +233,31 @@ def ensure_parser(repo_root: Path, pin: dict) -> Path:
         raise ConformanceError("uv is not on PATH; install uv first") from None
     except subprocess.CalledProcessError as exc:
         raise ConformanceError(
-            f"installing the pinned parser failed (exit {exc.returncode}); "
-            "the check needs network access to the pinned GitHub revision"
+            f"installing the pinned parser at {revision} failed "
+            f"(exit {exc.returncode}); the check needs network access to that "
+            "GitHub revision"
         ) from exc
 
     installed = installed_record(python)
-    if not reuse_ok(installed, pin):
+    if not reuse_ok(installed, revision):
         raise ConformanceError(
             f"installed parser does not match the pin: got {installed!r}, "
-            f"expected gnn {pin['tag']} at {pin['revision']}"
+            f"expected {revision}"
         )
     return python
 
 
-def check_sketch(sketch: Path) -> None:
-    from gnn.parsers.basic import parse_gnn_formal, validate_gnn_syntax
-
-    parsed = parse_gnn_formal(sketch)
-    parse_errors = getattr(parsed, "parse_errors", None)
-    if parsed is None or parse_errors:
-        raise ConformanceError(f"{sketch} did not parse cleanly: {parse_errors!r}")
-    valid, syntax_errors = validate_gnn_syntax(sketch.read_text(encoding="utf-8"))
-    if not valid:
-        raise ConformanceError(f"{sketch} syntax errors: {syntax_errors!r}")
+def check_reader(python: Path) -> None:
+    """Run the shared reader in the pinned environment, in place."""
+    completed = subprocess.run(
+        [str(python), *READER_ARGS],
+        cwd=REPO_ROOT,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise ConformanceError(
+            f"the shared reader rejected this checkout (exit {completed.returncode})"
+        )
 
 
 def typecheck_verdict(result: object) -> None:
@@ -265,98 +277,74 @@ def typecheck_verdict(result: object) -> None:
     )
 
 
-def typecheck(model_dir: Path, output_dir: Path) -> None:
+def typecheck_specs(repo_root: Path) -> dict:
+    """Type-check the specifications the shared reader discovers.
+
+    Runs inside the pinned parser environment, so `discover_specs` and the
+    type checker come from the pinned revision and the file set is the reader's,
+    not a second glob.
+    """
+    from gnn import __version__
+    from gnn.importers import discover_specs
     from gnn.type_checker import GNNTypeChecker
 
-    typecheck_verdict(GNNTypeChecker().validate_gnn_files(model_dir, Path(output_dir)))
-
-
-def rglob_sketches(root: Path) -> list[Path]:
-    """Every `*.gnn.md` sketch, never one inside an environment or VCS dir."""
-    sketches = []
-    for path in root.rglob("*.gnn.md"):
-        if SKIP_DIRS.intersection(path.relative_to(root).parts):
-            continue
-        sketches.append(path)
-    return sketches
-
-
-def check_repository_sketches(sketches: list[Path], output_dir: Path) -> dict:
-    model_dir = Path(output_dir) / "models"
-    model_dir.mkdir()
-    for sketch in sketches:
-        check_sketch(sketch)
-    for index, sketch in enumerate(sketches):
-        shutil.copy2(sketch, model_dir / f"{index:03d}_{sketch.name}")
-    typecheck(model_dir, Path(output_dir))
-    return {"models": len(sketches), "source": "repository"}
-
-
-def check_pinned_exemplar(pin: dict, output_dir: Path) -> dict:
-    url = (
-        f"https://raw.githubusercontent.com/{pin['repository']}/"
-        f"{pin['revision']}/{EXEMPLAR}"
-    )
-    exemplar = Path(output_dir) / Path(EXEMPLAR).name
-    try:
-        urllib.request.urlretrieve(url, exemplar)
-    except OSError as exc:
-        raise ConformanceError(f"cannot fetch pinned exemplar {url}: {exc}") from exc
-    check_sketch(exemplar)
-    model_dir = Path(output_dir) / "models"
-    model_dir.mkdir()
-    shutil.copy2(exemplar, model_dir / exemplar.name)
-    typecheck(model_dir, Path(output_dir))
-    return {"models": 1, "source": "pinned-exemplar"}
-
-
-def verify(repo_root: Path, pin: dict) -> dict:
-    from gnn import __version__
-
-    expected = pin["tag"].removeprefix("v")
-    if __version__ != expected:
-        raise ConformanceError(
-            f"installed GNN {__version__!r} does not match {pin['tag']!r}"
-        )
-
-    sketches = sorted(rglob_sketches(repo_root))
-    with tempfile.TemporaryDirectory(prefix="gnn-conformance-") as output_dir:
-        if sketches:
-            extra = check_repository_sketches(sketches, output_dir)
-        else:
-            log("no repository sketch found; validating the pinned exemplar")
-            extra = check_pinned_exemplar(pin, output_dir)
+    specs = discover_specs(repo_root)
+    if specs:
+        with tempfile.TemporaryDirectory(prefix="gnn-conformance-") as output_dir:
+            model_dir = Path(output_dir) / "models"
+            model_dir.mkdir()
+            for index, spec in enumerate(specs):
+                shutil.copy2(spec, model_dir / f"{index:03d}_{spec.name}")
+            typecheck_verdict(
+                GNNTypeChecker().validate_gnn_files(model_dir, Path(output_dir))
+            )
 
     return {
         "gnn-version": __version__,
-        "pin-revision": pin["revision"],
-        **extra,
-        "result": "verified",
+        "models": len(specs),
+        "files": [str(spec.relative_to(repo_root)) for spec in specs],
     }
 
 
 def main(argv: list[str]) -> int:
     repo_root = REPO_ROOT
     os.chdir(repo_root)
-    pin = load_pin(repo_root)
 
-    if "--verify-only" in argv:
+    if "--typecheck" in argv:
         # Second phase: this interpreter is the isolated parser environment.
-        verdict = verify(repo_root, pin)
-    else:
-        python = ensure_parser(repo_root, pin)
+        report_path = Path(argv[argv.index("--typecheck") + 1])
+        report_path.write_text(
+            json.dumps(typecheck_specs(repo_root), sort_keys=True),
+            encoding="utf-8",
+        )
+        return 0
+
+    revision = pinned_revision(repo_root)
+    python = ensure_parser(repo_root, revision)
+    check_reader(python)
+
+    with tempfile.TemporaryDirectory(prefix="gnn-conformance-report-") as report_dir:
+        report_path = Path(report_dir) / "typecheck.json"
+        phase = [
+            str(python),
+            str(Path(__file__).resolve()),
+            "--typecheck",
+            str(report_path),
+        ]
         completed = subprocess.run(
-            [str(python), str(Path(__file__).resolve()), "--verify-only"],
+            phase,
             text=True,
             capture_output=True,
+            cwd=repo_root,
             check=False,
         )
         sys.stderr.write(completed.stderr)
         if completed.returncode != 0:
             return completed.returncode
-        verdict = json.loads(completed.stdout)
+        verdict = json.loads(report_path.read_text(encoding="utf-8"))
 
-    print(json.dumps(verdict, sort_keys=True))
+    report = {**verdict, "pin-revision": revision, "result": "verified"}
+    print(json.dumps(report, sort_keys=True))
     return 0
 
 

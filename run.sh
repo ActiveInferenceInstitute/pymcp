@@ -36,7 +36,9 @@ arm_links() { run_uv python scripts/check_docs.py; }
 arm_facts_check() { run_uv python scripts/gate_facts.py --check; }
 arm_gnn() {
   # The pinned parser lives in its own .gnn-venv/, so the arm never needs the
-  # project environment: no second lock, no duplicated install.
+  # project environment: no second lock, no duplicated install. The script
+  # materializes the pinned revision there and runs the shared reader
+  # (`python -m gnn.importers check`) from it.
   uv run --no-project --python "$PYTHON_VERSION" python scripts/gnn_conformance.py
 }
 
