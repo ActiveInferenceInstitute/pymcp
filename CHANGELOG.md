@@ -45,7 +45,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   sidecar task entry updated to match.
 
 ### Fixed
-- Corrected the sidecar's integration and agent-document paths to `.aii/docs/`.
+- Restored the sidecar's `docs/INTEGRATION.md` and `docs/AGENTS.md` entries:
+  the pinned InstituteOS validator resolves `docs[]` relative to `.aii/`, not
+  the repository root; the audit's proposed `.aii/docs/` prefix was incorrect.
 - GNN pin validation rejects non-object JSON and non-string required fields with
   the declared conformance failure instead of ordinary Python exceptions.
 - The GNN pointer distinguishes local conformance from shared-reader contract
