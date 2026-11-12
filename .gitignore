@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 .venv/
+.gnn-venv/
 .ruff_cache/
 *.egg-info/
 tests/output/
