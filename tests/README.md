@@ -1,11 +1,16 @@
 # MCP-PyMDP Tests
 
-This directory contains tests for the MCP-PyMDP project. The canonical way to
-run the suite is pytest:
+This directory contains tests for the MCP-PyMDP project. The gate is
+`./run.sh` from the repository root; use it instead of remembered commands:
 
 ```bash
-uv run python -m pytest tests/        # from the repository root (54 tests)
+./run.sh test        # fast arm: the suite minus tests marked `slow`
+./run.sh test-full   # every collected test
 ```
+
+Underneath, both arms are one pytest invocation over `tests/`. Collected counts
+and the `slow` split are generated into
+[`../docs/_generated/gate-facts.md`](../docs/_generated/gate-facts.md).
 
 The legacy organizers (`run_and_organize.sh`, `run_all_tests.py`) still work
 for running tests by category and organizing the outputs; they need the

@@ -10,7 +10,6 @@ Import this script at the beginning of any script that needs to use
 MCP modules.
 """
 
-import os
 import sys
 from pathlib import Path
 

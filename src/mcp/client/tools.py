@@ -4,11 +4,7 @@ MCP Client Tools.
 This module provides high-level wrappers for MCP tools.
 """
 
-import asyncio
-import json
-import os
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
@@ -17,15 +13,15 @@ from .core import MCPClient
 
 class MCPToolKit:
     """High-level toolkit for working with MCP tools.
-    
+
     This class provides convenience methods for working with MCP tools
     without having to directly use the low-level MCP client.
-    
+
     Parameters
     ----------
     client : MCPClient
         MCP client to use
-    
+
     Attributes
     ----------
     client : MCPClient
@@ -45,7 +41,7 @@ class MCPToolKit:
         D: Optional[Union[List[List[float]], List[np.ndarray]]] = None
     ) -> Dict[str, Any]:
         """Create an agent from generative model matrices.
-        
+
         Parameters
         ----------
         name : str
@@ -58,7 +54,7 @@ class MCPToolKit:
             C matrices (preferences)
         D : List[List[float]] or List[np.ndarray], optional
             D matrices (prior beliefs), by default None
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -91,7 +87,7 @@ class MCPToolKit:
         reward_positions: List[List[int]]
     ) -> Dict[str, Any]:
         """Create an agent for a grid world environment.
-        
+
         Parameters
         ----------
         name : str
@@ -100,7 +96,7 @@ class MCPToolKit:
             Grid size [height, width]
         reward_positions : List[List[int]]
             List of reward positions [[row, col], ...]
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -123,7 +119,7 @@ class MCPToolKit:
         reward_positions: List[List[int]]
     ) -> Dict[str, Any]:
         """Create a grid world environment.
-        
+
         Parameters
         ----------
         name : str
@@ -132,7 +128,7 @@ class MCPToolKit:
             Grid size [height, width]
         reward_positions : List[List[int]]
             List of reward positions [[row, col], ...]
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -164,7 +160,7 @@ class MCPToolKit:
         rewards: Dict[str, float]
     ) -> Dict[str, Any]:
         """Create a custom environment.
-        
+
         Parameters
         ----------
         name : str
@@ -177,7 +173,7 @@ class MCPToolKit:
             Transitions dictionary (state -> action -> next state)
         rewards : Dict[str, float]
             Rewards dictionary (state -> reward)
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -204,7 +200,7 @@ class MCPToolKit:
         output_dir: Optional[str] = None
     ) -> Dict[str, Any]:
         """Run a simulation with an agent in an environment.
-        
+
         Parameters
         ----------
         agent_id : str
@@ -219,7 +215,7 @@ class MCPToolKit:
             Planning horizon for policy inference, by default None
         output_dir : str, optional
             Directory to save outputs, by default None
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -256,7 +252,7 @@ class MCPToolKit:
         format: str = "png"
     ) -> str:
         """Visualize an agent's generative model.
-        
+
         Parameters
         ----------
         agent_id : str
@@ -265,7 +261,7 @@ class MCPToolKit:
             Path to save the visualization, by default None
         format : str, optional
             Visualization format, by default "png"
-        
+
         Returns
         -------
         str
@@ -290,7 +286,7 @@ class MCPToolKit:
         include_policies: bool = True
     ) -> Dict[str, str]:
         """Visualize a simulation.
-        
+
         Parameters
         ----------
         session_id : str
@@ -303,7 +299,7 @@ class MCPToolKit:
             Whether to include belief visualization, by default True
         include_policies : bool, optional
             Whether to include policy visualization, by default True
-        
+
         Returns
         -------
         Dict[str, str]
@@ -332,14 +328,14 @@ class MCPToolKit:
         output_file: Optional[str] = None
     ) -> Dict[str, Any]:
         """Analyze free energy from a simulation.
-        
+
         Parameters
         ----------
         session_id : str
             Session ID
         output_file : str, optional
             Path to save the analysis, by default None
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -361,14 +357,14 @@ class MCPToolKit:
         output_file: Optional[str] = None
     ) -> Dict[str, Any]:
         """Plot belief dynamics from a simulation.
-        
+
         Parameters
         ----------
         session_id : str
             Session ID
         output_file : str, optional
             Path to save the plot, by default None
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -390,14 +386,14 @@ class MCPToolKit:
         check_normalization: bool = True
     ) -> Dict[str, Any]:
         """Validate a generative model.
-        
+
         Parameters
         ----------
         model : Dict[str, List]
             Generative model (A, B, C, D matrices)
         check_normalization : bool, optional
             Whether to check normalization, by default True
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -418,14 +414,14 @@ class MCPToolKit:
         model2: Dict[str, List]
     ) -> Dict[str, Any]:
         """Compare two generative models.
-        
+
         Parameters
         ----------
         model1 : Dict[str, List]
             First generative model
         model2 : Dict[str, List]
             Second generative model
-        
+
         Returns
         -------
         Dict[str, Any]
@@ -449,7 +445,7 @@ class MCPToolKit:
         output_dir: Optional[str] = None
     ) -> Dict[str, Any]:
         """Run an agent in an environment (alias for run_simulation).
-        
+
         Parameters
         ----------
         agent_id : str
@@ -462,7 +458,7 @@ class MCPToolKit:
             Whether to save history, by default True
         output_dir : str, optional
             Directory to save outputs, by default None
-        
+
         Returns
         -------
         Dict[str, Any]

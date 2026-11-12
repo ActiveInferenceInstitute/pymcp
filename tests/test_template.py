@@ -11,7 +11,6 @@ import sys
 import unittest
 
 import matplotlib
-import numpy as np
 
 matplotlib.use('Agg')  # Use non-interactive Agg backend for testing
 
@@ -32,7 +31,6 @@ if src_dir not in sys.path:
 import pymdp
 
 # Import the MCP implementation
-from mcp.server.fastmcp import Context, FastMCP
 from mcp.utils import PyMDPInterface
 
 # Example import template for reference
@@ -57,14 +55,14 @@ import pymdp
 class TestTemplate(unittest.TestCase):
     """
     Template class for PyMDP-MCP tests.
-    
+
     This template provides examples of standard docstring formats and test structures
     to ensure consistency across test files.
     """
 
     def setUp(self):
         """Set up test fixtures.
-        
+
         This method is called before each test is run. It sets up the PyMDPInterface
         and ensures the output directory exists.
         """
@@ -73,7 +71,7 @@ class TestTemplate(unittest.TestCase):
 
     def tearDown(self):
         """Clean up after tests.
-        
+
         This method is called after each test is run. It can be used to clean up
         temporary files or resources created during the test.
         """
@@ -81,25 +79,25 @@ class TestTemplate(unittest.TestCase):
 
     def test_template_function(self):
         """Test template function with standard docstring format.
-        
+
         This test verifies that [specific functionality] works correctly by
         [brief description of what the test does].
-        
+
         The test follows these steps:
         1. Create necessary test data or objects
         2. Call the function being tested
         3. Validate the results against expected outcomes
         4. Save visualization or log files for inspection
-        
+
         Expected Results:
         - The function should return [expected return value]
         - The output should match [expected output]
         - The visualization should show [expected visualization features]
-        
+
         Test Inputs:
         - [Input 1]: [Description]
         - [Input 2]: [Description]
-        
+
         Test Coverage:
         - [Coverage 1]: [Description]
         - [Coverage 2]: [Description]
@@ -120,27 +118,27 @@ class TestTemplate(unittest.TestCase):
 
     def test_agent_creation_template(self):
         """Test creating an active inference agent with specified parameters.
-        
+
         This test verifies that agent creation works correctly by creating an agent
         with specific A, B, C, and D matrices and validating the result.
-        
+
         The test follows these steps:
         1. Define A, B, C, and D matrices for a simple generative model
         2. Create an agent using the PyMDPInterface
         3. Validate the agent's properties and structure
         4. Compare with a direct PyMDP agent creation
-        
+
         Expected Results:
         - The agent should be created successfully
         - The agent should have the correct number of observation modalities, state factors, and control states
         - The agent should be an instance of pymdp.agent.Agent
-        
+
         Test Inputs:
         - A matrices: Observation model mappings
         - B matrices: Transition dynamics
         - C vectors: Preference distributions
         - D vectors: Prior beliefs
-        
+
         Test Coverage:
         - Agent creation API
         - Matrix format conversion
@@ -168,26 +166,26 @@ class TestTemplate(unittest.TestCase):
 
     def test_inference_template(self):
         """Test inference with detailed computation logs.
-        
+
         This test verifies that state inference works correctly by creating an agent,
         providing an observation, and validating the posterior beliefs.
-        
+
         The test follows these steps:
         1. Create an agent with a simple generative model
         2. Provide an observation to the agent
         3. Infer posterior beliefs over hidden states
         4. Validate the posterior beliefs against expected values
         5. Compare with direct PyMDP inference
-        
+
         Expected Results:
         - The inferred posterior should sum to 1.0 (valid probability distribution)
         - The posterior should match the expected distribution given the model and observation
         - The inference should match results from direct PyMDP API calls
-        
+
         Test Inputs:
         - Agent generative model: A simple model with specified parameters
         - Observation: A specific observation to cause belief updating
-        
+
         Test Coverage:
         - Inference API
         - Belief updating
@@ -203,27 +201,27 @@ class TestTemplate(unittest.TestCase):
 
     def test_simulation_template(self):
         """Test running and visualizing a simulation.
-        
+
         This test verifies that agent-environment simulations work correctly by creating
         an agent and environment, running a simulation, and analyzing the results.
-        
+
         The test follows these steps:
         1. Create an agent with a specified generative model
         2. Create an environment with specific parameters
         3. Run a simulation for a number of time steps
         4. Visualize the results
         5. Validate the agent's behavior against expected patterns
-        
+
         Expected Results:
         - The agent should navigate toward high-reward states
         - The belief dynamics should show appropriate updating based on observations
         - The visualizations should display the agent's trajectory and beliefs
-        
+
         Test Inputs:
         - Agent generative model: Parameters for the agent's model
         - Environment parameters: Grid size, reward locations, etc.
         - Simulation length: Number of time steps to simulate
-        
+
         Test Coverage:
         - Agent-environment interaction
         - Belief updating during simulation
@@ -242,40 +240,40 @@ template_test_class = """
 class Test{Category}(unittest.TestCase):
     \"\"\"
     Tests for {category_description}.
-    
+
     This test class verifies that {specific_functionality} works correctly by
     {brief_description}.
     \"\"\"
-    
+
     def setUp(self):
         \"\"\"Set up test fixtures.\"\"\"
         self.pymdp_interface = PyMDPInterface()
         os.makedirs(OUTPUT_DIR, exist_ok=True)
-        
+
     def tearDown(self):
         \"\"\"Clean up after tests.\"\"\"
         pass
-        
+
     def test_{specific_function}(self):
         \"\"\"Test {function_description}.
-        
+
         This test verifies that {specific_functionality} works correctly by
         {brief_description}.
-        
+
         The test follows these steps:
         1. {step_1}
         2. {step_2}
         3. {step_3}
         4. {step_4}
-        
+
         Expected Results:
         - {expected_result_1}
         - {expected_result_2}
-        
+
         Test Inputs:
         - {input_1}: {input_description_1}
         - {input_2}: {input_description_2}
-        
+
         Test Coverage:
         - {coverage_1}: {coverage_description_1}
         - {coverage_2}: {coverage_description_2}

@@ -2,13 +2,10 @@ import json
 import logging
 import os
 import time
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pymdp.utils as utils
-from pymdp.agent import Agent
-from pymdp.envs import Env
 
 # Set up logging
 logger = logging.getLogger("mcp.utils")
@@ -213,11 +210,11 @@ class PyMDPInterface:
     def define_generative_model(self, A_dims: List[List[int]], B_dims: List[List[int]]) -> Dict:
         """
         Create a generative model with random A, B matrices of the given dimensions.
-        
+
         Args:
             A_dims: List of dimensions for each A matrix [obs_dim, state_dim]
             B_dims: List of dimensions for each B matrix [state_dim, state_dim, action_dim]
-            
+
         Returns:
             Dict with A, B, C, D matrices
         """
@@ -281,14 +278,14 @@ class PyMDPInterface:
     def create_gridworld_agent(self, name, grid_size, reward_positions, action_precision=1.0, inference_horizon=5):
         """
         Create a gridworld agent with the specified parameters.
-        
+
         Args:
             name: Name of the agent
             grid_size: Grid dimensions [height, width]
             reward_positions: List of reward positions [[row, col], ...]
             action_precision: Precision parameter for action selection
             inference_horizon: Horizon for policy inference
-            
+
         Returns:
             Dict with agent information
         """
@@ -305,8 +302,6 @@ class PyMDPInterface:
                     return {"error": f"Reward position ({row}, {col}) is out of bounds for a {height}x{width} grid"}
 
             # Define state dimensions for GridWorld
-            state_dimensions = [num_states]
-            control_factor_idx = [0]  # Single control factor
 
             # Create A and B dimensions for GridWorld
             A_dims = [[num_states, num_states], [2, num_states]]  # Location and reward observations
@@ -364,10 +359,10 @@ class PyMDPInterface:
     def _normalize_A_matrix(self, A_matrix: np.ndarray) -> np.ndarray:
         """
         Normalize an A matrix so that columns sum to 1.
-        
+
         Args:
             A_matrix: The A matrix to normalize [obs_dim, state_dim]
-            
+
         Returns:
             Normalized A matrix
         """
@@ -396,11 +391,11 @@ class PyMDPInterface:
     def validate_generative_model(self, generative_model: Dict, check_normalization: bool = True) -> Dict:
         """
         Validate a generative model by checking its structure and normalization.
-        
+
         Args:
             generative_model: The generative model to validate
             check_normalization: Whether to check if matrices are normalized
-            
+
         Returns:
             Dict with validation results
         """
@@ -424,8 +419,8 @@ class PyMDPInterface:
             # Extract components
             A = generative_model.get("A", [])
             B = generative_model.get("B", [])
-            C = generative_model.get("C", None)
-            D = generative_model.get("D", None)
+            generative_model.get("C", None)
+            generative_model.get("D", None)
 
             # Convert to numpy arrays for validation
             A_arrays = [np.array(a) for a in A]
@@ -489,7 +484,6 @@ class PyMDPInterface:
         Returns:
             Dict with posterior state beliefs, computation details and a log key
         """
-        import numpy as np
         try:
             if self.debug_mode:
                 print(f"State inference for agent {agent_id} with observation {observation}")
@@ -648,17 +642,16 @@ class PyMDPInterface:
     def create_grid_world_env(self, name: str, grid_size: List[int], reward_positions: List[List[int]]) -> Dict:
         """
         Create a grid world environment with the given parameters.
-        
+
         Args:
             name: Name of the environment
             grid_size: Grid dimensions [height, width]
             reward_positions: List of reward positions [[row, col], ...]
-            
+
         Returns:
             Dict with environment information
         """
         try:
-            import numpy as np
 
             # Extract dimensions
             height, width = grid_size
@@ -694,11 +687,11 @@ class PyMDPInterface:
     def step_environment(self, env_id: str, action: Union[List[int], int]) -> Dict:
         """
         Take a step in the environment with the specified action.
-        
+
         Args:
             env_id: ID of the environment
             action: Action to take (can be a single integer or list)
-            
+
         Returns:
             Dict with observation, reward, done, and info
         """
@@ -768,14 +761,14 @@ class PyMDPInterface:
                      save_history: bool = True, planning_horizon: int = None) -> Dict:
         """
         Run a simulation with an agent in an environment.
-        
+
         Args:
             agent_id: ID of the agent
             env_id: ID of the environment
             num_steps: Number of steps to run
             save_history: Whether to save simulation history
             planning_horizon: Planning horizon for policy inference (None uses agent default)
-            
+
         Returns:
             Dict with simulation results
         """
@@ -791,7 +784,7 @@ class PyMDPInterface:
                 return {"error": f"Environment {env_id} not found"}
 
             agent = self.agents[agent_id]
-            env = self.environments[env_id]
+            self.environments[env_id]
 
             # Reset environment
             reset_result = self.reset_environment(env_id)
@@ -891,10 +884,10 @@ class PyMDPInterface:
     def reset_environment(self, env_id: str) -> Dict:
         """
         Reset an environment to its initial state.
-        
+
         Args:
             env_id: ID of the environment
-            
+
         Returns:
             Dict with initial observation and state
         """
@@ -932,11 +925,11 @@ class PyMDPInterface:
     def visualize_belief_dynamics(self, session_id: str, output_file: str = None) -> Dict:
         """
         Visualize belief dynamics over a simulation.
-        
+
         Args:
             session_id: ID of the simulation session
             output_file: Path to save the visualization
-            
+
         Returns:
             Dict with visualization information
         """
@@ -973,11 +966,10 @@ class PyMDPInterface:
             # Import visualization libraries
             import matplotlib.gridspec as gridspec
             import matplotlib.pyplot as plt
-            from matplotlib.colors import LinearSegmentedColormap
 
             # Create a figure with subplots for each state factor
             num_timesteps = len(beliefs_over_time)
-            fig = plt.figure(figsize=(12, 4 * num_factors))
+            plt.figure(figsize=(12, 4 * num_factors))
             gs = gridspec.GridSpec(num_factors, 1, height_ratios=[1] * num_factors)
 
             # Plot beliefs for each state factor
@@ -1043,10 +1035,10 @@ class PyMDPInterface:
     def get_agent(self, name: str) -> Dict:
         """
         Retrieve an agent by name.
-        
+
         Args:
             name: Name of the agent
-            
+
         Returns:
             Dict with agent parameters
         """
@@ -1085,10 +1077,10 @@ class PyMDPInterface:
     def get_environment(self, name: str) -> Dict:
         """
         Get information about a specific environment.
-        
+
         Args:
             name: Name of the environment
-            
+
         Returns:
             Dict with environment information
         """
@@ -1200,7 +1192,6 @@ class PyMDPInterface:
         Uses the simulation history stored by ``run_simulation`` (looked up by
         the timestamped id or the stable ``agent_id_env_id`` key).
         """
-        import matplotlib.gridspec as gridspec
         base, ext = os.path.splitext(output_file)
         try:
             # Locate the stored history (by timestamped id or stable agent_env key).
@@ -1410,13 +1401,13 @@ class PyMDPInterface:
     def calculate_free_energy(self, A_matrix: List, prior: List, observation: List, q_states: List) -> Dict:
         """
         Calculate variational free energy for given beliefs and observations.
-        
+
         Args:
             A_matrix: Observation likelihood matrix (A)
             prior: Prior beliefs about states
             observation: Observed outcome
             q_states: Posterior beliefs about states
-            
+
         Returns:
             Dict with calculated free energy and components
         """
@@ -1474,12 +1465,12 @@ class PyMDPInterface:
     def infer_states_from_observation(self, A_matrix: List, prior: List, observation: List) -> Dict:
         """
         Infer states from an observation using Bayes' rule.
-        
+
         Args:
             A_matrix: Observation likelihood matrix (A)
             prior: Prior beliefs about states
             observation: Observed outcome
-            
+
         Returns:
             Dict with posterior state beliefs
         """

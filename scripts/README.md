@@ -1,7 +1,21 @@
 # MCP-PyMDP Example Scripts
 
 This directory contains scripts for testing and demonstrating the PyMCP
-integration (MCP server + REST API over the PyMDP active inference library).
+integration (MCP server + REST API over the PyMDP active inference library), plus
+the tooling behind the `./run.sh` gate arms.
+
+## Gate tooling
+
+These scripts are not examples; they back the arms of `./run.sh` (see
+[`../docs/RUN_GUIDE.md`](../docs/RUN_GUIDE.md)):
+
+| Script | Called by | Purpose |
+| --- | --- | --- |
+| `gnn_conformance.py` | `./run.sh gnn` | Verifies `.github/gnn-pin.json` (schema `gnn-importer-pin/v1`), installs the pinned GNN revision into `.gnn-venv/`, and parses/type-checks the repository sketches. Prints a JSON verdict. |
+| `check_docs.py` | `./run.sh links` | Checks every relative Markdown link in tracked `*.md` files and that each page under `docs/` appears in `docs/documentation-index.md`. |
+| `gate_facts.py` | `./run.sh docs` (`--check`) and `--record` | Re-runs the arms, writes `docs/_generated/arms.json`, and renders `docs/_generated/gate-facts.md`. |
+
+The rest of this page covers the example scripts.
 
 ## Setup
 

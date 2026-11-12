@@ -4,7 +4,6 @@ Simulation Visualization Module.
 This module provides functions for visualizing Active Inference agent simulations.
 """
 
-import json
 import os
 
 import matplotlib.animation as animation
@@ -15,7 +14,7 @@ from matplotlib.gridspec import GridSpec
 
 def visualize_simulation(simulation_history, output_file, include_beliefs=True, include_policies=True):
     """Create comprehensive visualization of a simulation
-    
+
     Parameters
     ----------
     simulation_history : dict
@@ -26,7 +25,7 @@ def visualize_simulation(simulation_history, output_file, include_beliefs=True, 
         Whether to include belief visualization, by default True
     include_policies : bool, optional
         Whether to include policy/action visualization, by default True
-        
+
     Returns
     -------
     dict
@@ -212,7 +211,7 @@ def visualize_simulation(simulation_history, output_file, include_beliefs=True, 
 
 def plot_beliefs(ax, belief_data):
     """Plot belief evolution on the given axis
-    
+
     Parameters
     ----------
     ax : matplotlib.axes.Axes
@@ -259,7 +258,7 @@ def plot_beliefs(ax, belief_data):
 
 def plot_policies(ax, policy_data, action_data=None):
     """Plot policy posterior evolution on the given axis
-    
+
     Parameters
     ----------
     ax : matplotlib.axes.Axes
@@ -312,7 +311,7 @@ def plot_policies(ax, policy_data, action_data=None):
 
 def plot_actions(ax, action_data):
     """Plot actions on the given axis when policy data is not available
-    
+
     Parameters
     ----------
     ax : matplotlib.axes.Axes
@@ -349,14 +348,14 @@ def plot_actions(ax, action_data):
 
 def create_belief_heatmap(belief_data, output_file):
     """Create a heatmap visualization of beliefs over time
-    
+
     Parameters
     ----------
     belief_data : list
         List of belief arrays for each timestep
     output_file : str
         Path to save the visualization
-        
+
     Returns
     -------
     str
@@ -431,14 +430,14 @@ def create_belief_heatmap(belief_data, output_file):
 
 def visualize_policy_evolution(policy_data, output_file):
     """Create visualization of policy posterior evolution over time
-    
+
     Parameters
     ----------
     policy_data : list
         List of policy posterior arrays for each timestep
     output_file : str
         Path to save the visualization
-        
+
     Returns
     -------
     str
@@ -497,14 +496,14 @@ def visualize_policy_evolution(policy_data, output_file):
 
 def visualize_free_energy(fe_trace, output_file):
     """Create visualization of free energy over time
-    
+
     Parameters
     ----------
     fe_trace : list
         List of free energy values for each timestep
     output_file : str
         Path to save the visualization
-        
+
     Returns
     -------
     str
@@ -550,7 +549,7 @@ def visualize_free_energy(fe_trace, output_file):
 
 def create_simulation_animation(simulation_history, output_file, interval=200):
     """Create an animation of the agent's behavior in the environment
-    
+
     Parameters
     ----------
     simulation_history : dict
@@ -559,7 +558,7 @@ def create_simulation_animation(simulation_history, output_file, interval=200):
         Path to save the animation
     interval : int, optional
         Interval between frames in milliseconds, by default 200
-        
+
     Returns
     -------
     str

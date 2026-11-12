@@ -7,9 +7,7 @@ import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Union
-
-import numpy as np
+from typing import Any, Dict
 
 from mcp.server.fastmcp import Context, FastMCP
 from mcp.utils import NumpyEncoder, PyMDPInterface
@@ -25,10 +23,10 @@ class PyMDPContext:
 async def pymdp_lifespan(server: FastMCP) -> AsyncIterator[PyMDPContext]:
     """
     Manages the PyMDP interface lifecycle.
-    
+
     Args:
         server: The FastMCP server instance
-        
+
     Yields:
         PyMDPContext: The context containing the PyMDP interface
     """
@@ -54,7 +52,7 @@ mcp = FastMCP(
 async def create_agent(ctx: Context, name: str,
                      generative_model: str) -> str:
     """Create an active inference agent with specified parameters.
-    
+
     Args:
         ctx: The MCP server provided context
         name: Name to identify this agent
@@ -71,7 +69,7 @@ async def create_agent(ctx: Context, name: str,
 @mcp.tool()
 async def define_generative_model(ctx: Context, A_dims: str, B_dims: str) -> str:
     """Define random A and B matrices based on dimensions.
-    
+
     Args:
         ctx: The MCP server provided context
         A_dims: JSON string of A matrix dimensions [[obs_dim1, state_dim1], [obs_dim2, state_dim2], ...]
@@ -89,7 +87,7 @@ async def define_generative_model(ctx: Context, A_dims: str, B_dims: str) -> str
 @mcp.tool()
 async def infer_states(ctx: Context, agent_name: str, observation: str, method: str = 'FPI') -> str:
     """Infer hidden states given an observation.
-    
+
     Args:
         ctx: The MCP server provided context
         agent_name: Name of the agent
@@ -107,7 +105,7 @@ async def infer_states(ctx: Context, agent_name: str, observation: str, method: 
 @mcp.tool()
 async def infer_policies(ctx: Context, agent_name: str, planning_horizon: int = None) -> str:
     """Optimize policies based on expected free energy.
-    
+
     Args:
         ctx: The MCP server provided context
         agent_name: Name of the agent
@@ -123,7 +121,7 @@ async def infer_policies(ctx: Context, agent_name: str, planning_horizon: int = 
 @mcp.tool()
 async def sample_action(ctx: Context, agent_name: str, planning_horizon: int = None) -> str:
     """Sample an action from the agent's policy distribution.
-    
+
     Args:
         ctx: The MCP server provided context
         agent_name: Name of the agent
@@ -140,7 +138,7 @@ async def sample_action(ctx: Context, agent_name: str, planning_horizon: int = N
 async def create_grid_world_env(ctx: Context, name: str, grid_size: str,
                              reward_locations: str) -> str:
     """Create a simple grid world environment.
-    
+
     Args:
         ctx: The MCP server provided context
         name: Name to identify this environment
@@ -159,7 +157,7 @@ async def create_grid_world_env(ctx: Context, name: str, grid_size: str,
 @mcp.tool()
 async def step_environment(ctx: Context, env_name: str, action: str) -> str:
     """Update the environment given an agent's action.
-    
+
     Args:
         ctx: The MCP server provided context
         env_name: Name of the environment
@@ -177,7 +175,7 @@ async def step_environment(ctx: Context, env_name: str, action: str) -> str:
 async def run_simulation(ctx: Context, agent_name: str, env_name: str,
                       num_timesteps: int) -> str:
     """Run a simulation for a specified number of timesteps.
-    
+
     Args:
         ctx: The MCP server provided context
         agent_name: Name of the agent
@@ -195,7 +193,7 @@ async def run_simulation(ctx: Context, agent_name: str, env_name: str,
 async def visualize_simulation(ctx: Context, simulation_id: str,
                            output_file: str = "simulation.png") -> str:
     """Generate a visualization of a simulation.
-    
+
     Args:
         ctx: The MCP server provided context
         simulation_id: ID of the simulation to visualize
@@ -211,7 +209,7 @@ async def visualize_simulation(ctx: Context, simulation_id: str,
 @mcp.tool()
 async def get_agent(ctx: Context, name: str) -> str:
     """Retrieve an agent by name.
-    
+
     Args:
         ctx: The MCP server provided context
         name: Name of the agent
@@ -226,7 +224,7 @@ async def get_agent(ctx: Context, name: str) -> str:
 @mcp.tool()
 async def get_environment(ctx: Context, name: str) -> str:
     """Retrieve an environment by name.
-    
+
     Args:
         ctx: The MCP server provided context
         name: Name of the environment
@@ -241,7 +239,7 @@ async def get_environment(ctx: Context, name: str) -> str:
 @mcp.tool()
 async def get_all_agents(ctx: Context) -> str:
     """Get all stored agents.
-    
+
     Args:
         ctx: The MCP server provided context
     """
@@ -255,7 +253,7 @@ async def get_all_agents(ctx: Context) -> str:
 @mcp.tool()
 async def get_all_environments(ctx: Context) -> str:
     """Get all stored environments.
-    
+
     Args:
         ctx: The MCP server provided context
     """
@@ -269,7 +267,7 @@ async def get_all_environments(ctx: Context) -> str:
 @mcp.tool()
 async def get_all_simulations(ctx: Context) -> str:
     """Get all stored simulation results.
-    
+
     Args:
         ctx: The MCP server provided context
     """
@@ -283,7 +281,7 @@ async def get_all_simulations(ctx: Context) -> str:
 @mcp.tool()
 async def get_all_functions(ctx: Context) -> str:
     """Get all available PyMDP functions.
-    
+
     Args:
         ctx: The MCP server provided context
     """
@@ -297,7 +295,7 @@ async def get_all_functions(ctx: Context) -> str:
 def run_tests(args: Dict[str, Any]) -> None:
     """
     Run tests using the run_and_organize.sh script
-    
+
     Parameters
     ----------
     args : Dict[str, Any]

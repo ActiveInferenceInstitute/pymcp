@@ -51,7 +51,7 @@
 
 | Task | Command | Working directory | Description |
 | --- | --- | --- | --- |
-| `test` | `uv run python -m pytest tests/` | `.` | Run the test suite. |
+| `test` | `./run.sh test-full` | `.` | Run the full test suite (all gate arms are `./run.sh <arm>`). |
 
 ## Validation
 

@@ -14,14 +14,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-import numpy as np
-
 # Add the src directory to the Python path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from mcp.client import MCPClient, MCPToolKit
-from mcp.client.config import load_config, save_config
 
 
 async def run_example(host="localhost", port=8080, use_ssl=False, output_dir=None):
@@ -319,7 +315,7 @@ async def run_example(host="localhost", port=8080, use_ssl=False, output_dir=Non
                 if session_id:
                     # Try to visualize the simulation trajectory with server
                     try:
-                        vis_result = await toolkit.visualize_simulation(
+                        await toolkit.visualize_simulation(
                             session_id=session_id,
                             output_file=os.path.join(output_dir, "simulation.png")
                         )
@@ -390,7 +386,7 @@ async def run_example(host="localhost", port=8080, use_ssl=False, output_dir=Non
             if session_id:
                 # Try to visualize the simulation trajectory with server
                 try:
-                    vis_result = await toolkit.visualize_simulation(
+                    await toolkit.visualize_simulation(
                         session_id=session_id,
                         output_file=os.path.join(output_dir, "simulation.png")
                     )

@@ -1,37 +1,50 @@
 # Testing
 
 The pymcp test suite exercises `PyMDPInterface` directly **and** through the MCP
-layer. It is the repository's single declared gate and the one CI runs.
+layer. It is the repository's declared gate and the one CI runs.
 
 ## Running the suite
 
+Use the gate, not remembered command lines (see the [Run Guide](RUN_GUIDE.md)):
+
 ```bash
-uv sync --frozen --python 3.12          # install the committed lock (incl. dev group)
-uv run --frozen python -m pytest tests/ # canonical command
+./run.sh setup       # install the committed lock (Python 3.12) — once
+./run.sh test        # fast arm: the suite minus tests marked `slow`
+./run.sh test-full   # every collected test — what CI runs
 ```
 
-`pytest` collects **54 tests** across seven files:
+Underneath, both arms are one pytest invocation over `tests/`; `test` adds
+`-m "not slow"`. The exact commands live in `run.sh`, never in prose or YAML.
 
-| File | Collected tests | Focus |
-| --- | --- | --- |
-| `tests/test_pymdp_interface.py` | 15 | `PyMDPInterface` model construction, inference, action selection |
-| `tests/test_mcp_tools.py` | 16 | MCP tool wrappers over the interface |
-| `tests/test_additional_functions.py` | 7 | Helper functions and edge cases |
-| `tests/test_mcp_full.py` | 5 | End-to-end MCP server flow |
-| `tests/test_agent_visualization.py` | 4 | Visualization outputs (PNG + JSON companions) |
-| `tests/test_template.py` | 4 | Test scaffolding template |
-| `tests/test_belief_dynamics.py` | 3 | Belief-dynamics traces |
+## The `slow` marker
 
-The count `54` is what `pytest --collect-only -q tests/` reports; a raw
-`grep -c 'def test_'` over `tests/` reports 59 because five matches are not
-pytest tests (MCP handler functions defined inside `tests/test_mcp_full.py`,
-and one literal `def test_{specific_function}(self)` inside the template string
-in `tests/test_template.py`).
+`pyproject.toml` declares one marker, `slow`, and it is applied to the tests
+that run a full PyMDP simulation or visualization pass — the eight that
+`pytest --durations` shows dominating suite call time (gridworld simulation
+visualization, both `visualize_simulation` and `run_simulation` pairs, the
+multi-modality agent plot, and the belief-dynamics plot).
+
+`./run.sh test` deselects exactly those; `./run.sh test-full` runs everything.
+A benchmark or CI run that needs the visualization artifacts must use
+`test-full`.
+
+## How many tests, and in which files
+
+Counts are generated, not maintained here: the collected total, the per-file
+breakdown, and the `slow`-marked split are all in
+[`_generated/gate-facts.md`](_generated/gate-facts.md), produced by
+`scripts/gate_facts.py`. `./run.sh docs` fails if that page and its receipt
+disagree, so there is never a second, hand-edited copy to drift.
+
+A raw `grep -c 'def test_'` over `tests/` over-reports the collection: five
+matches are not pytest tests (MCP handler functions defined inside
+`tests/test_mcp_full.py`, and one literal `def test_{specific_function}(self)`
+inside a template string in `tests/test_template.py`).
 
 > Offline note: the suite requires the resolved environment (`inferactively-pymdp`
 > and the other declared dependencies). On a bare interpreter without those
 > packages, `pytest` cannot import the modules and collection fails — install the
-> lock first with `uv sync`.
+> lock first with `./run.sh setup`.
 
 ## Legacy runners
 
@@ -46,8 +59,10 @@ They still work when the dependencies are installed:
 uv run python run_all_tests.py --category belief_dynamics
 ```
 
-`run_and_organize.sh` is a thin wrapper over `run_all_tests.py`; the categories
-are defined in `run_all_tests.py`'s `category_patterns`.
+`run_and_organize.sh` (inside `tests/`) is a thin wrapper over
+`run_all_tests.py`; the categories are defined in `run_all_tests.py`'s
+`category_patterns`. They are conveniences for browsing output by category, not
+the gate.
 
 ## Test outputs
 
@@ -63,24 +78,33 @@ full category and output reference.
 2. Reuse the modular code under `src/mcp/` rather than duplicating it.
 3. Register the file in `run_all_tests.py`'s `category_patterns` if it should
    run under a named category.
+4. Mark a test `@pytest.mark.slow` if it runs a full simulation or
+   visualization pass, so the fast arm stays fast.
 
 ## CI
 
-`.github/workflows/ci.yml` runs two jobs on push and pull request to `main`:
+`.github/workflows/ci.yml` has two jobs, and every step is a `./run.sh` arm:
 
-- **`test suite (python 3.12, frozen lock)`** — `uv sync --frozen --python 3.12`
-  then `uv run --frozen python -m pytest tests/`.
-- **`gnn conformance (pinned)`** — installs the pinned GNN parser
-  (`.github/gnn-pin.json`) and validates any repository `*.gnn.md` sketches. See
-  [`TODO.md`](../TODO.md) for a known warning-sentinel caveat in this check.
+- **`tests`** — display name `test suite (python 3.12, frozen lock)`: one
+  `setup-python-uv` step, one `./run.sh setup`, then `./run.sh lint`,
+  `./run.sh docs` and `./run.sh test-full`.
+- **`gnn-conformance`** — display name `gnn conformance (pinned)`: the same
+  toolchain action, then `./run.sh gnn`. See
+  [`../.github/GNN.md`](../.github/GNN.md).
+
+GitHub Actions is billing-locked org-wide, so local runs are the only gate that
+executes today; `./run.sh all` is the local equivalent of both jobs.
 
 ## Lint
 
-`ruff` is a declared dev dependency. Inspect without rewriting the tree:
+`ruff` is a declared dev dependency and the `lint` arm is a real gate: it exits
+non-zero on any finding, so CI fails rather than accumulating debt.
 
 ```bash
-uv run ruff check --no-fix
+./run.sh lint     # uv run --frozen ruff check --no-fix
 ```
 
 `pyproject.toml` sets `[tool.ruff] fix = true`, so plain `ruff check` rewrites
-files. See [`TODO.md`](../TODO.md) for the current lint-debt status.
+the tree; `--no-fix` is mandatory when judging. `tests/*` and `scripts/*` carry
+an `E402` per-file ignore because those files put `src/` on `sys.path` (and pick
+the matplotlib backend) before importing project modules.

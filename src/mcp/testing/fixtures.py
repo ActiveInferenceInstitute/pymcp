@@ -9,7 +9,7 @@ import numpy as np
 
 def create_simple_generative_model(num_obs=2, num_states=2, num_actions=2):
     """Create a simple generative model with specified dimensions.
-    
+
     Parameters
     ----------
     num_obs : int, optional
@@ -18,7 +18,7 @@ def create_simple_generative_model(num_obs=2, num_states=2, num_actions=2):
         Number of states, by default 2
     num_actions : int, optional
         Number of actions, by default 2
-    
+
     Returns
     -------
     dict
@@ -81,7 +81,7 @@ def create_simple_generative_model(num_obs=2, num_states=2, num_actions=2):
 
 def create_multimodal_generative_model(num_modalities=2, state_dims=[2], control_dims=[2]):
     """Create a generative model with multiple observation modalities.
-    
+
     Parameters
     ----------
     num_modalities : int, optional
@@ -90,7 +90,7 @@ def create_multimodal_generative_model(num_modalities=2, state_dims=[2], control
         Dimensions of each state factor, by default [2]
     control_dims : list, optional
         Dimensions of each control factor, by default [2]
-    
+
     Returns
     -------
     dict
@@ -127,7 +127,7 @@ def create_multimodal_generative_model(num_modalities=2, state_dims=[2], control
             # Normalize if needed
             if col_sum < 1.0:
                 remaining = 1.0 - col_sum
-                non_zero_count = np.count_nonzero(A_m[obs_slice])
+                np.count_nonzero(A_m[obs_slice])
                 zero_indices = np.where(A_m[obs_slice] == 0)[0]
 
                 if len(zero_indices) > 0:
@@ -184,14 +184,14 @@ def create_multimodal_generative_model(num_modalities=2, state_dims=[2], control
 
 def create_gridworld_generative_model(grid_size=[3, 3], reward_position=None):
     """Create a generative model for a grid world environment.
-    
+
     Parameters
     ----------
     grid_size : list, optional
         Grid dimensions [height, width], by default [3, 3]
     reward_position : list, optional
         Position of reward [row, col], by default None (bottom-right)
-    
+
     Returns
     -------
     dict
@@ -262,14 +262,14 @@ def create_gridworld_generative_model(grid_size=[3, 3], reward_position=None):
 
 def create_grid_world_environment(grid_size=[3, 3], reward_positions=None):
     """Create a grid world environment configuration.
-    
+
     Parameters
     ----------
     grid_size : list, optional
         Grid dimensions [height, width], by default [3, 3]
     reward_positions : list, optional
         List of reward positions [[row, col], ...], by default None
-    
+
     Returns
     -------
     dict
@@ -290,7 +290,7 @@ def create_grid_world_environment(grid_size=[3, 3], reward_positions=None):
 
 def create_custom_environment(name="custom_env", states=None, observations=None):
     """Create a custom environment configuration.
-    
+
     Parameters
     ----------
     name : str, optional
@@ -299,7 +299,7 @@ def create_custom_environment(name="custom_env", states=None, observations=None)
         List of state names, by default None
     observations : list, optional
         List of observation names, by default None
-    
+
     Returns
     -------
     dict

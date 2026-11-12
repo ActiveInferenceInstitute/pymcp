@@ -6,7 +6,6 @@ import sys
 import time
 
 import matplotlib.pyplot as plt
-import numpy as np
 
 # Add the proper paths
 current_dir = os.path.dirname(os.path.abspath(__file__))

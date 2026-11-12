@@ -10,7 +10,6 @@ import asyncio
 import datetime
 import json
 import os
-import sys
 import time
 
 import aiohttp
@@ -23,10 +22,10 @@ from mcp.server.fastmcp import Context
 
 def create_output_dir(name_prefix="output"):
     """Create a timestamped output directory for storing results.
-    
+
     Args:
         name_prefix: Prefix for the directory name (default: "output")
-        
+
     Returns:
         str: Path to the created output directory
     """
@@ -42,7 +41,7 @@ class MCPClient:
 
     def __init__(self, host="localhost", port=8080, use_ssl=False, output_dir=None):
         """Initialize the MCP client.
-        
+
         Args:
             host: Hostname of the MCP server
             port: Port number of the MCP server
@@ -73,7 +72,7 @@ class MCPClient:
 
     async def ping(self):
         """Ping the MCP server to check connectivity.
-        
+
         Returns:
             dict: Response from the server or error information
         """
@@ -93,7 +92,7 @@ class MCPClient:
 
     async def get_tools(self):
         """Get the list of available tools from the MCP server.
-        
+
         Returns:
             list: List of available tools
         """
@@ -113,11 +112,11 @@ class MCPClient:
 
     async def call_tool(self, tool_id, params=None):
         """Call an MCP tool on the server.
-        
+
         Args:
             tool_id: ID of the tool to call
             params: Parameters to pass to the tool
-            
+
         Returns:
             dict: The parsed result from the tool
         """
@@ -183,13 +182,13 @@ class MCPClient:
 
 class DirectMCPClient:
     """Client that directly calls MCP tools without going through the server.
-    
+
     This is useful for testing and development when the server isn't running.
     """
 
     def __init__(self, output_dir=None):
         """Initialize the direct MCP client.
-        
+
         Args:
             output_dir: Directory to save outputs
         """
@@ -206,11 +205,11 @@ class DirectMCPClient:
 
     async def call_tool(self, tool_name, **params):
         """Call an MCP tool directly.
-        
+
         Args:
             tool_name: Name of the tool to call
             **params: Parameters to pass to the tool
-            
+
         Returns:
             The parsed result from the tool
         """
@@ -250,13 +249,13 @@ class DirectMCPClient:
 
 async def get_best_client(output_dir=None):
     """Determine and return the best available MCP client.
-    
+
     This function attempts to connect to a running MCP server.
     If successful, it returns an MCPClient; otherwise, it returns a DirectMCPClient.
-    
+
     Args:
         output_dir: Directory to save outputs
-        
+
     Returns:
         Union[MCPClient, DirectMCPClient]: The most appropriate client
     """

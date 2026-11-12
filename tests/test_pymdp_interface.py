@@ -1,7 +1,6 @@
 import datetime
 import json
 import os
-import shutil
 import sys
 import time
 import unittest
@@ -9,6 +8,7 @@ import unittest
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import pytest
 
 matplotlib.use('Agg')  # Use non-interactive Agg backend for testing
 from pathlib import Path
@@ -407,6 +407,7 @@ class TestPyMDPInterface(unittest.TestCase):
         with open(os.path.join(OUTPUT_DIR, "interface_environment_step_test.json"), "w") as f:
             json.dump(result, f, indent=2)
 
+    @pytest.mark.slow
     def test_run_simulation(self):
         """Test running a simulation."""
         # Define a simple generative model for a 2D grid agent
@@ -502,6 +503,7 @@ class TestPyMDPInterface(unittest.TestCase):
         with open(os.path.join(GEN_MODEL_DIR, "sim_agent_generative_model.json"), "w") as f:
             json.dump(generative_model, f, indent=2, cls=NumpyEncoder)
 
+    @pytest.mark.slow
     def test_visualize_simulation(self):
         """Test visualizing a simulation with enhanced comprehensive outputs."""
         # Create a grid-world specific agent that aligns with the environment
@@ -621,7 +623,7 @@ class TestPyMDPInterface(unittest.TestCase):
         # Create a computation log manually if not found - this is a fallback
         if len(json_files) == 0:
             # Get the simulation history
-            history = self.pymdp_interface.simulation_history.get("viz_agent_viz_env", {})
+            self.pymdp_interface.simulation_history.get("viz_agent_viz_env", {})
             # Create minimal log data for testing
             log_data = {"manual_log": {
                 "timestamp": time.time(),
@@ -788,7 +790,7 @@ class TestPyMDPInterface(unittest.TestCase):
         C = [[1.0, 0.0]]  # Preference for first observation
 
         self.pymdp_interface.create_agent("validation_agent", {"A": A, "B": B, "C": C})
-        interface_agent = self.pymdp_interface.agents["validation_agent"]
+        self.pymdp_interface.agents["validation_agent"]
 
         # Directly with PyMDP (current batched API, mirroring the interface)
         import numpy as _np

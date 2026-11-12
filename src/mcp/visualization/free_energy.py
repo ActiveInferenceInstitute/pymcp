@@ -13,14 +13,14 @@ import numpy as np
 
 def visualize_free_energy_components(history, output_file):
     """Create visualization of free energy components throughout simulation
-    
+
     Parameters
     ----------
     history : dict
         Simulation history dictionary containing timesteps with free energy data
     output_file : str
         Path to save the visualization
-        
+
     Returns
     -------
     str or None
@@ -99,14 +99,14 @@ def visualize_free_energy_components(history, output_file):
 
 def visualize_variational_free_energy(history, output_file):
     """Create visualization of variational free energy over time
-    
+
     Parameters
     ----------
     history : dict
         Simulation history dictionary containing free_energy_trace field
     output_file : str
         Path to save the visualization
-        
+
     Returns
     -------
     str or None

@@ -13,7 +13,7 @@ import sys
 import time
 import traceback
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Optional
 
 import numpy as np
 
@@ -311,15 +311,13 @@ async def handle_create_gridworld_agent(params):
         reward_positions = json.loads(params.get("reward_positions", "[[2, 2]]"))
         action_precision = float(params.get("action_precision", "1.0"))
         inference_horizon = int(params.get("inference_horizon", "5"))
-        inference_algorithm = params.get("inference_algorithm", "FPI")
+        params.get("inference_algorithm", "FPI")
 
         # Create gridworld agent model
         height, width = grid_size
-        num_states = height * width
+        height * width
 
         # Define state dimensions for GridWorld
-        state_dimensions = [num_states]  # One state factor for position
-        observation_dimensions = [num_states, 2]  # Position observation and reward observation
 
         # Create the agent
         try:
@@ -687,7 +685,7 @@ async def run_session(session_id: str, request: Request):
                 history = {"timesteps": []}
 
                 # Get agent and environment
-                agent = pymdp_interface.agents.get(agent_id, {})
+                pymdp_interface.agents.get(agent_id, {})
                 env = pymdp_interface.environments.get(env_id, {})
 
                 # Get grid world parameters
@@ -1040,7 +1038,7 @@ async def visualize_session(session_id: str, format: str = "png", output_file: O
             agent_id = session.get("agent")
             env_id = session.get("environment")
 
-            agent = pymdp_interface.agents.get(agent_id, {})
+            pymdp_interface.agents.get(agent_id, {})
             env = pymdp_interface.environments.get(env_id, {})
 
             # Get grid world parameters
@@ -1273,7 +1271,7 @@ async def analyze_beliefs(session_id: str, output_file: Optional[str] = None):
 
         if beliefs:
             num_states = len(beliefs[0])
-            timesteps = len(beliefs)
+            len(beliefs)
 
             # Create a heatmap of beliefs
             belief_array = np.array(beliefs)

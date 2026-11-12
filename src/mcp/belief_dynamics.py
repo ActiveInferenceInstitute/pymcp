@@ -1,13 +1,13 @@
 """
 Belief Dynamics Module for MCP-PyMDP
 
-This module implements functions for analyzing, tracking, and visualizing 
-belief dynamics in active inference agents. The functions are used by 
+This module implements functions for analyzing, tracking, and visualizing
+belief dynamics in active inference agents. The functions are used by
 the MCP server tools and can be used directly by client applications.
 """
 
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,12 +16,12 @@ import numpy as np
 def extract_belief_history(history: Dict) -> Tuple[List, int, List[int]]:
     """
     Extract belief history data from a simulation history.
-    
+
     Parameters
     ----------
     history : Dict
         The simulation history from PyMDP
-        
+
     Returns
     -------
     Tuple[List, int, List[int]]
@@ -60,7 +60,7 @@ def create_belief_dynamics_visualization(
 ) -> str:
     """
     Create a visualization of belief dynamics throughout a simulation
-    
+
     Parameters
     ----------
     history : Dict
@@ -73,7 +73,7 @@ def create_belief_dynamics_visualization(
         Whether to show state labels on the y-axis, by default True
     custom_state_labels : Optional[List[List[str]]], optional
         Custom labels for states, organized by factor, by default None
-        
+
     Returns
     -------
     str
@@ -140,12 +140,12 @@ def create_belief_dynamics_visualization(
 def calculate_belief_statistics(beliefs: List) -> Dict:
     """
     Calculate statistics about belief dynamics
-    
+
     Parameters
     ----------
     beliefs : List
         List of belief states across timesteps
-        
+
     Returns
     -------
     Dict

@@ -21,7 +21,6 @@ if src_dir not in sys.path:
 # Import PyMDPInterface from utils.py
 # Import PyMDP
 import pymdp
-from pymdp import utils  # Add the utils import
 
 from mcp.utils import PyMDPInterface
 
@@ -185,7 +184,6 @@ class TestAdditionalFunctions(unittest.TestCase):
             self.assertAlmostEqual(sum(result["posterior_states"][0]), 1.0, places=6)
 
         # Verify that different methods produce different results
-        diff_found = False
         for i in range(len(methods)):
             for j in range(i+1, len(methods)):
                 method1 = methods[i]
@@ -195,7 +193,6 @@ class TestAdditionalFunctions(unittest.TestCase):
 
                 # Compare distributions - if they differ, we've confirmed different methods work
                 if abs(posterior1[0] - posterior2[0]) > 1e-6:
-                    diff_found = True
                     break
 
         # Some methods might produce identical results for simple models, so this is not always true

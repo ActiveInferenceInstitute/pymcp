@@ -14,7 +14,7 @@ from matplotlib.colors import LinearSegmentedColormap
 
 def visualize_generative_model(agent_name, matrices, output_file):
     """Create comprehensive visualization of the generative model (A, B, C, D matrices)
-    
+
     Parameters
     ----------
     agent_name : str
@@ -24,7 +24,7 @@ def visualize_generative_model(agent_name, matrices, output_file):
         Format: {'A': [...], 'B': [...], 'C': [...], 'D': [...]}
     output_file : str
         Path to save the visualization
-        
+
     Returns
     -------
     str
