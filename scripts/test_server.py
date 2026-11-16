@@ -5,6 +5,7 @@ import uuid
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from mcp.client import MCPToolKit
 from scripts.example_support import example_cli, write_json
 

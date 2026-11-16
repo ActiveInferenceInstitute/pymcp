@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from mcp.client import MCPToolKit
 from mcp.outputs import OutputPolicy
 from scripts.example_support import example_cli, grid_case, write_json
