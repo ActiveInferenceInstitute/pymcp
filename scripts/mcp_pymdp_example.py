@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Native model and compatible grid demonstrations over canonical REST."""
-from pathlib import Path
 import sys
 import uuid
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scripts.example_support import example_cli, grid_case, write_json

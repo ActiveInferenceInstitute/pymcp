@@ -13,10 +13,17 @@ from mcp.api import ToolRegistry
 from mcp.models import Limits
 from mcp.outputs import OutputPolicy
 from mcp.server.app import create_app
-from mcp.testing.helpers import generate_test_report, plot_test_results, save_test_results
+from mcp.testing.helpers import (
+    generate_test_report,
+    plot_test_results,
+    save_test_results,
+)
 from mcp.visualization import (
-    create_simulation_animation, visualize_expected_free_energy, visualize_free_energy_components,
-    visualize_generative_model, visualize_simulation,
+    create_simulation_animation,
+    visualize_expected_free_energy,
+    visualize_free_energy_components,
+    visualize_generative_model,
+    visualize_simulation,
 )
 from tests.contract_support import asgi_request, document, ok, one_cell, rectangular
 

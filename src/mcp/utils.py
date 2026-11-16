@@ -1,19 +1,33 @@
 """Bounded PyMDP filtering, explicit action commits, and run-owned evidence."""
 import copy
-from collections import OrderedDict
-from functools import wraps
 import json
 import logging
 import math
 import re
 import time
 import uuid
+from collections import OrderedDict
+from functools import wraps
 
 import numpy as np
 
 from .environments import CustomEnvironment, GridWorldEnvironment
-from .environments.common import environment_record, grid_shape, grid_transition, integer, position
-from .models import Limits, admit_model, array, numerical_inputs, policy_cost, probability, vfe_components
+from .environments.common import (
+    environment_record,
+    grid_shape,
+    grid_transition,
+    integer,
+    position,
+)
+from .models import (
+    Limits,
+    admit_model,
+    array,
+    numerical_inputs,
+    policy_cost,
+    probability,
+    vfe_components,
+)
 from .outputs import OutputPolicy
 
 logger = logging.getLogger(__name__)
@@ -595,11 +609,16 @@ class PyMDPInterface:
 
     @public
     def visualize_simulation(self, simulation_id: str, output_file: str = "simulation.png") -> dict:
+        from .visualization.free_energy import (
+            measured_records,
+            visualize_variational_free_energy,
+        )
         from .visualization.simulation import (
-            create_belief_heatmap, visualize_expected_free_energy, visualize_policy_evolution,
+            create_belief_heatmap,
+            visualize_expected_free_energy,
+            visualize_policy_evolution,
             visualize_simulation,
         )
-        from .visualization.free_energy import measured_records, visualize_variational_free_energy
         history = self._history(simulation_id)
         logs = self._require(self.get_computation_logs(simulation_id))
         target = self.output_policy.path(output_file)

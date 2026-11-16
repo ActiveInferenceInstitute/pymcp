@@ -7,9 +7,9 @@ not follow request-controlled symlinks, including final companion targets.
 import contextlib
 import json
 import os
-from pathlib import Path
 import stat
 import uuid
+from pathlib import Path
 
 
 class OutputPolicy:

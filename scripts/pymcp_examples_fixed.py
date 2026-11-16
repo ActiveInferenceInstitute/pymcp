@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Four real demonstrations: agent, grid, exact Bayes/VFE and explicit commits."""
-from pathlib import Path
 import sys
 import uuid
+from pathlib import Path
 
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from scripts.example_support import example_cli, grid_case, write_json
 from mcp.client import MCPToolKit
 from mcp.outputs import OutputPolicy
+from scripts.example_support import example_cli, grid_case, write_json
 
 
 async def agent_demo(client, directory):

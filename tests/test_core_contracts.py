@@ -10,7 +10,7 @@ from mcp.environments import GridWorldEnvironment
 from mcp.models import Limits
 from mcp.testing.fixtures import create_gridworld_generative_model
 from mcp.utils import PyMDPInterface
-from tests.contract_support import ONE_CELL, one_cell, ok
+from tests.contract_support import ONE_CELL, ok, one_cell
 
 
 def temporal_interface():

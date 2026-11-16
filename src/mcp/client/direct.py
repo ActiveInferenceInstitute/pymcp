@@ -1,6 +1,6 @@
 """Explicit in-process client. No HTTP probing, source-main import or fallback."""
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
 from ..api import InvalidArguments, ToolRegistry, UnknownTool
 from ..utils import PyMDPInterface

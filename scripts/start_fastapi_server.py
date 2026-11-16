@@ -2,14 +2,15 @@
 """Canonical single-process REST launcher; loopback unless explicitly configured."""
 import argparse
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 
 def main(argv=None):
     import uvicorn
+
     from mcp.server.app import create_app
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", default=os.environ.get("HOST", "127.0.0.1"))

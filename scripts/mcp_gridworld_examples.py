@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Three actual grid scenarios; no synthetic histories, metrics or fallback plots."""
-from pathlib import Path
 import sys
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scripts.example_support import example_cli, grid_case

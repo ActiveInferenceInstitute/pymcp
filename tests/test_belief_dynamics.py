@@ -5,7 +5,9 @@ import numpy as np
 import pytest
 
 from mcp.belief_dynamics import (
-    calculate_belief_statistics, create_belief_dynamics_visualization, extract_belief_history,
+    calculate_belief_statistics,
+    create_belief_dynamics_visualization,
+    extract_belief_history,
 )
 from mcp.outputs import OutputPolicy
 from tests.contract_support import chain

@@ -1,10 +1,9 @@
 """Shared example CLI and real required-operation reporting, never fallbacks."""
 import argparse
 import asyncio
-import json
-from pathlib import Path
 import sys
 import uuid
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))

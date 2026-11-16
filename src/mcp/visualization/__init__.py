@@ -12,8 +12,8 @@ from .generative_model import visualize_generative_model
 from .simulation import (
     create_belief_heatmap,
     create_simulation_animation,
-    visualize_free_energy,
     visualize_expected_free_energy,
+    visualize_free_energy,
     visualize_policy_evolution,
     visualize_simulation,
 )

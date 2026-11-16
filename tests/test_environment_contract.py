@@ -3,7 +3,12 @@ import copy
 
 import pytest
 
-from mcp.environments import CustomEnvironment, GridWorldEnvironment, create_custom_env, create_grid_world_env
+from mcp.environments import (
+    CustomEnvironment,
+    GridWorldEnvironment,
+    create_custom_env,
+    create_grid_world_env,
+)
 from mcp.utils import PyMDPInterface
 from tests.contract_support import ok
 

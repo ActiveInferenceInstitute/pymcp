@@ -1,6 +1,6 @@
 """Unbatched model admission and exact finite-support numerical helpers."""
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
 from numbers import Real
 
 import numpy as np

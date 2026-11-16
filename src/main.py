@@ -1,11 +1,11 @@
 """Source entry point for the bundled MCP transport; no resolver at startup."""
 import argparse
 import asyncio
-from contextlib import asynccontextmanager
-from dataclasses import dataclass
 import json
 import logging
 import os
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
 
 from mcp.api import ToolRegistry
 from mcp.server.fastmcp import FastMCP

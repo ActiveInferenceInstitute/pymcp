@@ -6,7 +6,13 @@ from urllib.parse import quote, urlsplit
 import aiohttp
 
 from ..utils import NumpyEncoder
-from .config import DEFAULT_CONFIG, get_server_url, load_config, merge_configs, validate_config
+from .config import (
+    DEFAULT_CONFIG,
+    get_server_url,
+    load_config,
+    merge_configs,
+    validate_config,
+)
 
 
 class ClientError(RuntimeError):

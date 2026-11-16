@@ -4,16 +4,22 @@ import builtins
 import copy
 import io
 import json
-from unittest.mock import patch
 import xml.etree.ElementTree as ET
+from unittest.mock import patch
 
 import pytest
 from PIL import Image
 
 from mcp.client import ClientError, DirectMCPClient, MCPClient, MCPToolKit, RemoteError
-from mcp.client.config import DEFAULT_CONFIG, get_server_url, load_config, merge_configs, save_config
+from mcp.client.config import (
+    DEFAULT_CONFIG,
+    get_server_url,
+    load_config,
+    merge_configs,
+    save_config,
+)
 from mcp.server.app import create_app
-from tests.contract_support import ASGISession, ONE_CELL, asgi_request, document, ok
+from tests.contract_support import ONE_CELL, ASGISession, asgi_request, document, ok
 
 
 def assert_png(value):

@@ -1,13 +1,13 @@
 """Bundled MCP JSON-RPC implementation (2025-03-26, stdio or HTTP+SSE)."""
 import asyncio
-from contextlib import asynccontextmanager, redirect_stdout
-from dataclasses import dataclass, field
 import inspect
 import json
 import logging
 import os
 import sys
 import uuid
+from contextlib import asynccontextmanager, redirect_stdout
+from dataclasses import dataclass, field
 
 from ..api import InvalidArguments, Tool, UnknownTool
 from ..utils import NumpyEncoder

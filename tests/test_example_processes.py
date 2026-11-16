@@ -1,12 +1,12 @@
 """Synthetic local children exercise the real owner; no provider or fake success."""
 import asyncio
-from contextlib import contextmanager
 import json
 import os
 import signal
 import socket
 import subprocess
 import sys
+from contextlib import contextmanager
 from unittest.mock import patch
 
 import numpy as np
@@ -17,7 +17,6 @@ from scripts import run_all_examples as owner
 from scripts.example_support import evaluate_cases, grid_case
 from scripts.pymcp_examples_fixed import free_energy_calculation
 from tests.contract_support import ROOT
-
 
 SERVER_SOURCE = '''import json, os, socket, sys
 from http.server import BaseHTTPRequestHandler, HTTPServer

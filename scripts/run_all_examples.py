@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """Own one exact REST child and preserve every example outcome."""
 import argparse
-from contextlib import contextmanager
 import json
 import math
 import os
-from pathlib import Path
 import signal
 import subprocess
 import sys
 import time
+import uuid
+from contextlib import contextmanager
+from pathlib import Path
 from urllib.error import URLError
 from urllib.request import urlopen
-import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = Path(__file__).resolve().parent

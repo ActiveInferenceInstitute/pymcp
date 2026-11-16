@@ -14,7 +14,13 @@ import pytest
 from mcp.api import ToolRegistry
 from mcp.server.fastmcp import FastMCP, ProtocolSession
 from mcp.utils import PyMDPInterface
-from tests.contract_support import INITIALIZE, INITIALIZED, ROOT, SSEConnection, document
+from tests.contract_support import (
+    INITIALIZE,
+    INITIALIZED,
+    ROOT,
+    SSEConnection,
+    document,
+)
 
 
 def make_server(**settings):

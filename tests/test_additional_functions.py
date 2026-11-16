@@ -5,7 +5,10 @@ import numpy as np
 import pytest
 
 from mcp.models import Limits
-from mcp.testing.fixtures import create_multimodal_generative_model, create_simple_generative_model
+from mcp.testing.fixtures import (
+    create_multimodal_generative_model,
+    create_simple_generative_model,
+)
 from mcp.utils import PyMDPInterface
 from tests.contract_support import ok
 

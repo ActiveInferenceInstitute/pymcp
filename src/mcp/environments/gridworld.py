@@ -3,7 +3,14 @@ import copy
 
 import numpy as np
 
-from .common import GRID_ACTION_NAMES, action_index, grid_shape, grid_transition, integer, position as validate_position
+from .common import (
+    GRID_ACTION_NAMES,
+    action_index,
+    grid_shape,
+    grid_transition,
+    integer,
+)
+from .common import position as validate_position
 
 
 class GridWorldEnvironment:
