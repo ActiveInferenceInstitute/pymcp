@@ -1,20 +1,15 @@
 FROM python:3.12-slim
 
-ARG PORT=8050
-
 WORKDIR /app
+RUN pip install --no-cache-dir uv==0.13.8
+COPY pyproject.toml uv.lock README.md ./
+COPY src ./src
+RUN uv sync --frozen --no-dev --no-editable --python /usr/local/bin/python
 
-# Install uv
-RUN pip install uv
-
-# Copy the MCP server files
-COPY . .
-
-# Install packages
-RUN python -m venv .venv
-RUN uv pip install -e .
-
-EXPOSE ${PORT}
-
-# Command to run the MCP server
-CMD ["uv", "run", "src/main.py"]
+ENV TRANSPORT=stdio \
+    HOST=127.0.0.1 \
+    PORT=8050 \
+    MCP_OUTPUT_DIR=/app/output \
+    UV_OFFLINE=1
+EXPOSE 8050
+CMD ["/app/.venv/bin/python", "/app/src/main.py"]

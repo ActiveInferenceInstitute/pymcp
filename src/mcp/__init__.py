@@ -16,7 +16,7 @@ The package includes the following components:
 __version__ = "1.0.3"
 
 # Import client components
-from .client import MCPClient, MCPToolKit, get_server_url, load_config, save_config
+from .client import DirectMCPClient, MCPClient, MCPToolKit, get_server_url, load_config, save_config
 
 # Import environments
 from .environments import (
@@ -43,6 +43,7 @@ __all__ = [
 
     # Client
     'MCPClient',
+    'DirectMCPClient',
     'MCPToolKit',
     'load_config',
     'save_config',

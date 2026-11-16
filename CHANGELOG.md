@@ -6,6 +6,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Native contract cutover
+- Explicit native-object tool registry shared by MCP, REST and direct clients;
+  bundled JSON-RPC initialization, strict schemas and bounded SSE channels.
+- Predictive priors advance only after a successful token-matched transition
+  or explicit external commit; reset invalidates pending actions.
+- Complete unbatched model interchange, structural-support admission, signed
+  VFE, full policy/expected-free-energy records and actual history-based plots.
+- Bounded core/protocol/output/frame ownership, primary and companion symlink
+  protection, real image bytes, actual run IDs and failure-visible processes.
+- Retired duplicate servers/clients/visualization shims, category organizers,
+  inert test templates and synthetic energy fallbacks. Current APIs and
+  commands are documented in the tool/setup references.
+- Parent qualification repaired passive one-action Agent construction,
+  backpressured SSE channel release and the direct-client example consumer.
+  Focused native/transport/process/render contracts were exercised; full gate,
+  installed-artifact, image and release qualification remain separate.
+- Reset defaults remain grid origin/custom first-state; configured starts and
+  stop-on-done are explicit options, not new scientific default decisions.
+
 ### Added
 - `run.sh` — the single gate entry point: `setup`, `lint`, `test` (fast arm),
   `test-full`, `links`, `docs`, `gnn`, `all`. CI calls these arms, so no gate
@@ -53,16 +72,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Lint debt retired: 435 ruff findings (W293/W291 whitespace, F401 unused
   imports, F841 unused locals, E402, I001) fixed, with `E402` exempted for
   `tests/*` and `scripts/*` because those files put `src/` on `sys.path` before
-  importing project modules. `./run.sh lint` is now a passing gate.
+  importing project modules. That recorded retirement passed its lint gate;
+  it is not a current-source lint receipt for the later native cutover.
 - Documentation counts and test commands replaced with the `./run.sh` arms and
   the generated facts page; `AGENTS.md`, `tests/README.md`,
   `tests/DOCUMENTATION_TESTING.md`, `scripts/README.md` and the InstituteOS
   sidecar task entry updated to match.
 - PyMDP floor raised to `inferactively-pymdp>=1.0.5`; `uv.lock` re-resolved with
   `uv lock` (1.0.4 → 1.0.5, `sha256:c5846121…` sdist / `sha256:5e423a33…`
-  wheel). The suite is green against the new pin with no test or assertion
-  changed (74 passed, 14 subtests), and no live 1.0.5 behaviour differs for the
-  surface this repository uses.
+  wheel). The previously recorded full-suite receipt belongs to that pin
+  transition, not this later API cutover. Current gate counts come only from
+  `docs/_generated/gate-facts.md` after an actual canonical producer run.
 
 ### Fixed
 - Restored the sidecar's `docs/INTEGRATION.md` and `docs/AGENTS.md` entries:

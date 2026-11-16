@@ -1,380 +1,306 @@
-"""
-FastMCP implementation for the Model Context Protocol.
-
-This module provides a server implementation for the MCP protocol,
-designed to be efficient and easy to use for exposing PyMDP functionality.
-"""
-
+"""Bundled MCP JSON-RPC implementation (2025-03-26, stdio or HTTP+SSE)."""
 import asyncio
+from contextlib import asynccontextmanager, redirect_stdout
+from dataclasses import dataclass, field
 import inspect
 import json
+import logging
 import os
 import sys
-import time
-from dataclasses import dataclass
-from typing import Any, Callable, Dict, List
+import uuid
 
-# Constants
-DEFAULT_HOST = "0.0.0.0"
-DEFAULT_PORT = "8050"
+from ..api import InvalidArguments, Tool, UnknownTool
+from ..utils import NumpyEncoder
+
+DEFAULT_HOST = "127.0.0.1"
+DEFAULT_PORT = 8050
 DEFAULT_TRANSPORT = "sse"
+PROTOCOL_VERSION = "2025-03-26"
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class Context:
-    """Context object for MCP tool calls."""
-    request_context: Any
+    request_context: object
+
 
 class RequestContext:
-    """Context for the current request."""
-    def __init__(self, lifespan_context: Any):
+    def __init__(self, lifespan_context):
         self.lifespan_context = lifespan_context
-        self.start_time = time.time()
-        self.tool_calls: List[Dict[str, Any]] = []
+
+
+@dataclass
+class ProtocolSession:
+    phase: str = "new"
+    request_count: int = 0
+
+
+@dataclass
+class Channel:
+    session: ProtocolSession = field(default_factory=ProtocolSession)
+    responses: asyncio.Queue = field(default_factory=lambda: asyncio.Queue(maxsize=128))
+    lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+
+
+def encode(value):
+    return json.dumps(value, cls=NumpyEncoder, allow_nan=False, separators=(",", ":"))
+
+
+def parse(value):
+    def invalid_constant(value):
+        raise ValueError(f"non-JSON constant {value}")
+    return json.loads(value, parse_constant=invalid_constant)
+
+
+def rpc_error(identity, code, message):
+    return {"jsonrpc": "2.0", "id": identity, "error": {"code": code, "message": message}}
+
 
 class FastMCP:
-    """
-    FastMCP server implementation.
-
-    This class provides a server that exposes MCP tools to clients.
-    """
-
-    def __init__(self, name: str, description: str, lifespan,
-                 host: str = None, port: str = None, transport: str = None):
-        """
-        Initialize an MCP server.
-
-        Args:
-            name: Name of the MCP server
-            description: Description of the MCP server
-            lifespan: Async context manager for server lifespan
-            host: Host to bind to (for SSE transport)
-            port: Port to listen on (for SSE transport)
-            transport: Transport protocol ('sse' or 'stdio')
-        """
-        self.name = name
-        self.description = description
-        self.lifespan = lifespan
-
-        # Get configuration from environment if not provided
+    def __init__(self, name, description, lifespan, host=None, port=None, transport=None,
+                 max_message_bytes=1024 * 1024, max_channels=128, max_requests=10000,
+                 max_pending_responses=128):
+        self.name, self.description, self.lifespan = name, description, lifespan
         self.host = host or os.environ.get("HOST", DEFAULT_HOST)
-        self.port = port or os.environ.get("PORT", DEFAULT_PORT)
+        self.port = int(port if port is not None else os.environ.get("PORT", DEFAULT_PORT))
+        if not 1 <= self.port <= 65535:
+            raise ValueError("port is outside 1..65535")
         self.transport = transport or os.environ.get("TRANSPORT", DEFAULT_TRANSPORT)
+        self.max_message_bytes, self.max_channels, self.max_requests = max_message_bytes, max_channels, max_requests
+        self.max_pending_responses = max_pending_responses
+        if any(type(n) is not int or n <= 0 for n in (max_message_bytes, max_channels, max_requests, max_pending_responses)):
+            raise ValueError("protocol budgets must be positive integers")
+        self.tools = {}
+        self._execution_lock = asyncio.Lock()
 
-        # Initialize storage for tools
-        self.tools: Dict[str, Callable] = {}
-        self.tool_descriptions: Dict[str, Dict[str, Any]] = {}
+    def tool(self, name=None, description=None):
+        def register(function):
+            tool = Tool(name or function.__name__, function, description)
+            if tool.name in self.tools:
+                raise ValueError("duplicate tool")
+            self.tools[tool.name] = tool
+            return function
+        return register
 
-    def tool(self, name: str = None, description: str = None):
-        """
-        Decorator to register a function as an MCP tool.
+    def _registry(self, context):
+        return getattr(context, "registry", None)
 
-        Args:
-            name: Optional override for the tool name
-            description: Optional description for the tool
+    def descriptors(self, context):
+        registry = self._registry(context)
+        return registry.descriptors() if registry is not None else [t.descriptor() for t in self.tools.values()]
 
-        Returns:
-            Decorator function
-        """
-        def decorator(func):
-            # Get tool name
-            tool_name = name or func.__name__
+    async def handle_request(self, value, lifespan_context, session):
+        if isinstance(value, list):
+            if not value or len(value) > 64:
+                return rpc_error(None, -32600, "invalid or oversized batch")
+            responses = []
+            for item in value:
+                response = await self._safe_request(item, lifespan_context, session)
+                if response is not None:
+                    responses.append(response)
+            return responses or None
+        return await self._safe_request(value, lifespan_context, session)
 
-            # Get tool description from docstring if not provided
-            tool_desc = description
-            if not tool_desc and func.__doc__:
-                tool_desc = func.__doc__.strip()
-
-            # Parse function signature for parameters
-            sig = inspect.signature(func)
-            parameters = {}
-
-            for param_name, param in sig.parameters.items():
-                # Skip context parameter
-                if param_name == "ctx":
-                    continue
-
-                # Extract parameter type and default value
-                param_type = "string"  # Default type
-                if param.annotation != inspect.Parameter.empty:
-                    if param.annotation is int:
-                        param_type = "number"
-                    elif param.annotation is bool:
-                        param_type = "boolean"
-                    elif param.annotation is dict or param.annotation is Dict:
-                        param_type = "object"
-                    elif param.annotation is list or param.annotation is List:
-                        param_type = "array"
-
-                # Determine if parameter is required
-                required = param.default == inspect.Parameter.empty
-
-                # Create parameter description
-                parameters[param_name] = {
-                    "type": param_type,
-                    "required": required
-                }
-
-                # Add default value if available
-                if not required:
-                    parameters[param_name]["default"] = param.default
-
-            # Store tool information
-            self.tools[tool_name] = func
-            self.tool_descriptions[tool_name] = {
-                "name": tool_name,
-                "description": tool_desc,
-                "parameters": parameters
-            }
-
-            return func
-
-        return decorator
-
-    async def handle_request(self, request_data: Dict[str, Any], lifespan_context: Any) -> Dict[str, Any]:
-        """
-        Handle an incoming MCP request.
-
-        Args:
-            request_data: The request data
-            lifespan_context: The lifespan context
-
-        Returns:
-            Response data
-        """
-        # Extract request information
-        request_id = request_data.get("id")
-        tool_name = request_data.get("name")
-        parameters = request_data.get("parameters", {})
-
-        # Check if tool exists
-        if tool_name not in self.tools:
-            return {
-                "id": request_id,
-                "status": "error",
-                "error": f"Unknown tool: {tool_name}"
-            }
-
-        # Create request context
-        request_context = RequestContext(lifespan_context)
-        context = Context(request_context=request_context)
-
+    async def _safe_request(self, value, context, session):
         try:
-            # Call the tool function
-            tool_func = self.tools[tool_name]
-            result = await tool_func(context, **parameters)
+            return await self._request(value, context, session)
+        except Exception:
+            logger.exception("protocol dispatch failed")
+            if isinstance(value, dict) and "id" not in value and isinstance(value.get("method"), str):
+                return None
+            identity = value.get("id") if isinstance(value, dict) else None
+            return rpc_error(identity if type(identity) in (int, str) else None, -32603, "internal error")
 
-            # Return successful response
-            return {
-                "id": request_id,
-                "status": "success",
-                "result": result
-            }
-        except Exception as e:
-            # Return error response
-            import traceback
-            traceback.print_exc()
-            return {
-                "id": request_id,
-                "status": "error",
-                "error": str(e)
-            }
-
-    async def get_schema(self) -> Dict[str, Any]:
-        """
-        Get the OpenAPI schema for the MCP server.
-
-        Returns:
-            OpenAPI schema
-        """
-        tools = []
-        for tool_name, tool_desc in self.tool_descriptions.items():
-            tools.append({
-                "name": tool_name,
-                "description": tool_desc.get("description", ""),
-                "parameters": {
-                    "type": "object",
-                    "properties": tool_desc.get("parameters", {}),
-                    "required": [
-                        param_name for param_name, param_desc in
-                        tool_desc.get("parameters", {}).items()
-                        if param_desc.get("required", False)
-                    ]
-                }
-            })
-
-        return {
-            "openapi": "3.1.0",
-            "info": {
-                "title": self.name,
-                "description": self.description,
-                "version": "1.0.0"
-            },
-            "servers": [
-                {
-                    "url": f"http://{self.host}:{self.port}"
-                }
-            ],
-            "paths": {
-                "/tools": {
-                    "get": {
-                        "summary": "Get available tools",
-                        "responses": {
-                            "200": {
-                                "description": "List of available tools",
-                                "content": {
-                                    "application/json": {
-                                        "schema": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "name": {"type": "string"},
-                                                    "description": {"type": "string"},
-                                                    "parameters": {"type": "object"}
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "components": {
-                "schemas": {}
-            }
-        }
-
-    async def run_sse(self):
-        """Run the MCP server using SSE transport."""
+    async def _request(self, value, context, session):
+        if not isinstance(value, dict) or value.get("jsonrpc") != "2.0" or not isinstance(value.get("method"), str):
+            return rpc_error(None, -32600, "invalid JSON-RPC request")
+        notification = "id" not in value
+        identity = value.get("id")
+        if not notification and (type(identity) not in (int, str)):
+            return rpc_error(None, -32600, "request id must be a string or integer")
+        if set(value) - {"jsonrpc", "id", "method", "params"}:
+            return None if notification else rpc_error(identity, -32600, "unknown request fields")
+        params = value.get("params", {})
+        if not isinstance(params, dict):
+            return None if notification else rpc_error(identity, -32602, "params must be an object")
+        params = dict(params)
+        if "_meta" in params:
+            metadata = params.pop("_meta")
+            if not isinstance(metadata, dict):
+                return None if notification else rpc_error(identity, -32602, "_meta must be an object")
+            if "progressToken" in metadata and type(metadata["progressToken"]) not in (str, int):
+                return None if notification else rpc_error(identity, -32602, "invalid progress token")
+        method = value["method"]
+        if notification:
+            if method == "notifications/initialized" and not params and session.phase == "initializing":
+                session.phase = "ready"
+            # No notification receives a response, nor can it execute a tool.
+            return None
+        if session.request_count >= self.max_requests:
+            return rpc_error(identity, -32600, "session request budget exhausted")
+        session.request_count += 1
+        if method == "initialize":
+            info = params.get("clientInfo")
+            if (session.phase != "new" or not isinstance(params.get("protocolVersion"), str)
+                    or not isinstance(params.get("capabilities"), dict)
+                    or not isinstance(info, dict)
+                    or any(not isinstance(info.get(k), str) or not info[k] for k in ("name", "version"))):
+                return rpc_error(identity, -32602, "invalid initialization or already initialized")
+            session.phase = "initializing"
+            return {"jsonrpc": "2.0", "id": identity, "result": {
+                "protocolVersion": PROTOCOL_VERSION, "capabilities": {"tools": {"listChanged": False}},
+                "serverInfo": {"name": self.name, "version": "1.0.3"},
+            }}
+        if method == "ping":
+            if params:
+                return rpc_error(identity, -32602, "ping takes no parameters")
+            return {"jsonrpc": "2.0", "id": identity, "result": {}}
+        if method not in ("tools/list", "tools/call"):
+            return rpc_error(identity, -32601, "method not found")
+        if session.phase != "ready":
+            return rpc_error(identity, -32600, "initialize and initialized notification are required")
+        if method == "tools/list":
+            if params:
+                return rpc_error(identity, -32602, "pagination is not supported")
+            return {"jsonrpc": "2.0", "id": identity, "result": {"tools": self.descriptors(context)}}
+        if set(params) - {"name", "arguments"} or not isinstance(params.get("name"), str):
+            return rpc_error(identity, -32602, "tools/call requires name and native arguments")
         try:
-            import uvicorn
-            from fastapi import FastAPI, Request
-            from fastapi.middleware.cors import CORSMiddleware
-            from fastapi.responses import StreamingResponse
-        except ImportError:
-            print("Error: FastAPI and uvicorn are required for SSE transport")
-            print("Install with: pip install fastapi uvicorn")
-            sys.exit(1)
-
-        app = FastAPI(title=self.name, description=self.description)
-
-        # Add CORS middleware
-        app.add_middleware(
-            CORSMiddleware,
-            allow_origins=["*"],
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
-        )
-
-        # Create lifespan context
-        @app.on_event("startup")
-        async def startup():
-            app.state.lifespan_cm = self.lifespan(self)
-            app.state.lifespan_context = await app.state.lifespan_cm.__aenter__()
-
-        @app.on_event("shutdown")
-        async def shutdown():
-            await app.state.lifespan_cm.__aexit__(None, None, None)
-
-        # Define routes
-        @app.get("/schema")
-        async def get_schema():
-            return await self.get_schema()
-
-        @app.get("/tools")
-        async def get_tools():
-            return list(self.tool_descriptions.values())
-
-        @app.post("/invoke")
-        async def invoke_tool(request_data: dict):
-            return await self.handle_request(request_data, app.state.lifespan_context)
-
-        @app.get("/sse")
-        async def sse_endpoint(request: Request):
-            async def event_generator():
-                # Send initial connection message
-                yield f"data: {json.dumps({'type': 'connection', 'status': 'connected'})}\n\n"
-
-                try:
-                    # Keep connection alive
-                    while True:
-                        if await request.is_disconnected():
-                            break
-
-                        # Process incoming requests
-                        request_data = await request.json()
-                        response = await self.handle_request(request_data, app.state.lifespan_context)
-
-                        # Send response
-                        yield f"data: {json.dumps(response)}\n\n"
-
-                        # Brief pause to prevent tight loop
-                        await asyncio.sleep(0.01)
-                except Exception as e:
-                    yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
-
-            return StreamingResponse(
-                event_generator(),
-                media_type="text/event-stream",
-                headers={
-                    "Cache-Control": "no-cache",
-                    "Connection": "keep-alive",
-                    "Content-Type": "text/event-stream"
-                }
-            )
-
-        # Run the server (loop-safe: serve() is awaitable inside an asyncio loop)
-        server = uvicorn.Server(uvicorn.Config(app, host=self.host, port=int(self.port)))
-        await server.serve()
+            async with self._execution_lock:
+                registry = self._registry(context)
+                if registry is not None:
+                    result = registry.call(params["name"], params.get("arguments", {}))
+                else:
+                    if params["name"] not in self.tools:
+                        raise UnknownTool(params["name"])
+                    result = self.tools[params["name"]].call(
+                        params.get("arguments", {}), Context(RequestContext(context)))
+                    if inspect.isawaitable(result):
+                        result = await result
+                text = encode(result)
+        except (InvalidArguments, UnknownTool) as error:
+            return rpc_error(identity, -32602, str(error))
+        except Exception as error:
+            logger.exception("tool execution failed")
+            result = {"error": str(error), "error_code": "operation_failed"}
+            text = encode(result)
+        return {"jsonrpc": "2.0", "id": identity, "result": {
+            "content": [{"type": "text", "text": text}],
+            "isError": isinstance(result, dict) and "error" in result,
+        }}
 
     async def run_stdio(self):
-        """Run the MCP server using stdio transport."""
-        # Create lifespan context
-        async with self.lifespan(self) as lifespan_context:
-            # Process input until EOF
-            while True:
-                try:
-                    line = sys.stdin.readline()
+        output, input_stream = sys.stdout, getattr(sys.stdin, "buffer", sys.stdin)
+        session = ProtocolSession()
+        # Dependency/tool diagnostics cannot contaminate the protocol stream.
+        with redirect_stdout(sys.stderr):
+            async with self.lifespan(self) as context:
+                while True:
+                    line = input_stream.readline(self.max_message_bytes + 2)
                     if not line:
                         break
+                    size = len(line) if isinstance(line, bytes) else len(line.encode("utf-8", errors="surrogatepass"))
+                    if size > self.max_message_bytes:
+                        newline = b"\n" if isinstance(line, bytes) else "\n"
+                        while line and not line.endswith(newline):
+                            line = input_stream.readline(self.max_message_bytes + 2)
+                        response = rpc_error(None, -32600, "message exceeds byte budget")
+                    else:
+                        try:
+                            value = parse(line)
+                        except (ValueError, UnicodeError):
+                            response = rpc_error(None, -32700, "parse error")
+                        else:
+                            response = await self.handle_request(value, context, session)
+                    if response is not None:
+                        output.write(encode(response) + "\n")
+                        output.flush()
 
-                    # Parse request
-                    request_data = json.loads(line)
+    def create_sse_app(self):
+        from fastapi import FastAPI, HTTPException, Request
+        from fastapi.responses import Response, StreamingResponse
 
-                    # Handle request
-                    response = await self.handle_request(request_data, lifespan_context)
+        @asynccontextmanager
+        async def lifespan(app):
+            async with self.lifespan(self) as context:
+                app.state.context = context
+                app.state.channels = {}
+                try:
+                    yield
+                finally:
+                    app.state.channels.clear()
 
-                    # Send response
-                    sys.stdout.write(json.dumps(response) + "\n")
-                    sys.stdout.flush()
-                except EOFError:
-                    break
-                except json.JSONDecodeError:
-                    # Invalid JSON, send error response
-                    sys.stdout.write(json.dumps({
-                        "status": "error",
-                        "error": "Invalid JSON request"
-                    }) + "\n")
-                    sys.stdout.flush()
-                except Exception as e:
-                    # General error, send error response
-                    sys.stdout.write(json.dumps({
-                        "status": "error",
-                        "error": str(e)
-                    }) + "\n")
-                    sys.stdout.flush()
+        app = FastAPI(title=self.name, lifespan=lifespan)
+
+        @app.get("/sse")
+        async def connect(request: Request):
+            if len(app.state.channels) >= self.max_channels:
+                raise HTTPException(503, "channel budget exhausted")
+            identity = uuid.uuid4().hex
+            channel = Channel(responses=asyncio.Queue(maxsize=self.max_pending_responses))
+            app.state.channels[identity] = channel
+
+            async def events():
+                yield f"event: endpoint\ndata: /messages?session_id={identity}\n\n"
+                while not await request.is_disconnected():
+                    try:
+                        response = await asyncio.wait_for(channel.responses.get(), timeout=15)
+                    except asyncio.TimeoutError:
+                        yield ": heartbeat\n\n"
+                    else:
+                        yield f"event: message\ndata: {encode(response)}\n\n"
+
+            class ChannelResponse(StreamingResponse):
+                async def __call__(self, scope, receive, send):
+                    try:
+                        await super().__call__(scope, receive, send)
+                    finally:
+                        # Disconnect can cancel send while the iterator is suspended
+                        # at yield; its own finally would not run until it is closed.
+                        app.state.channels.pop(identity, None)
+                        await self.body_iterator.aclose()
+
+            return ChannelResponse(events(), media_type="text/event-stream",
+                                   headers={"Cache-Control": "no-cache"})
+
+        @app.post("/messages")
+        async def message(request: Request, session_id: str):
+            channel = app.state.channels.get(session_id)
+            if channel is None:
+                raise HTTPException(404, "unknown or expired channel")
+            chunks, size = [], 0
+            async for chunk in request.stream():
+                size += len(chunk)
+                if size > self.max_message_bytes:
+                    raise HTTPException(413, "message exceeds byte budget")
+                chunks.append(chunk)
+            async with channel.lock:
+                if app.state.channels.get(session_id) is not channel:
+                    raise HTTPException(404, "expired channel")
+                if channel.responses.full():
+                    raise HTTPException(429, "response queue is full")
+                try:
+                    value = parse(b"".join(chunks))
+                except (ValueError, UnicodeError):
+                    response = rpc_error(None, -32700, "parse error")
+                else:
+                    response = await self.handle_request(value, app.state.context, channel.session)
+                if response is not None:
+                    channel.responses.put_nowait(response)
+            # JSON-RPC response is delivered once, only on this SSE channel.
+            return Response(status_code=202)
+
+        return app
+
+    async def run_sse(self):
+        import uvicorn
+        await uvicorn.Server(uvicorn.Config(self.create_sse_app(), host=self.host,
+                                           port=self.port, workers=1)).serve()
 
     async def run(self):
-        """Run the MCP server with the configured transport."""
-        if self.transport == "sse":
-            await self.run_sse()
-        elif self.transport == "stdio":
+        if self.transport == "stdio":
             await self.run_stdio()
+        elif self.transport == "sse":
+            await self.run_sse()
         else:
-            raise ValueError(f"Unsupported transport: {self.transport}")
-
-# Shortcut function for tool decorator
-tool = FastMCP.tool
+            raise ValueError("transport must be stdio or sse")

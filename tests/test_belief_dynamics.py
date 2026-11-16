@@ -1,126 +1,78 @@
-"""
-Test module for belief dynamics functionality.
-"""
+"""Real producer history fed unchanged into the production belief readers."""
+import copy
 
-import os
-import sys
-import unittest
-
+import numpy as np
 import pytest
 
-# Add the src directory to the path for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
-
-import matplotlib
-
-# Use non-interactive backend
-matplotlib.use('Agg')
-
 from mcp.belief_dynamics import (
-    calculate_belief_statistics,
-    create_belief_dynamics_visualization,
-    extract_belief_history,
+    calculate_belief_statistics, create_belief_dynamics_visualization, extract_belief_history,
 )
+from mcp.outputs import OutputPolicy
+from tests.contract_support import chain
 
 
-class TestBeliefDynamics(unittest.TestCase):
-    """Test class for belief dynamics module."""
+def test_chain_history_keeps_pretransition_beliefs_separate_from_physical_state(tmp_path):
+    _, run = chain()
+    history = run["history"]
+    original = copy.deepcopy(history)
+    assert [step["observation"] for step in history["timesteps"]] == [[0], [1]]
+    assert [step["state"] for step in history["timesteps"]] == [[0], [1]]
+    assert [step["next_observation"] for step in history["timesteps"]] == [[1], [2]]
+    assert [step["next_state"] for step in history["timesteps"]] == [[1], [2]]
+    np.testing.assert_allclose([step["beliefs"][0] for step in history["timesteps"]],
+                               [[1, 0, 0], [0, 1, 0]], atol=1e-6)
+    beliefs, count, sizes = extract_belief_history(history)
+    assert count == 2 and sizes == [3]
+    statistics = calculate_belief_statistics(beliefs)
+    factor = statistics["factors"][0]
+    assert factor["max_belief_states"] == [0, 1]
+    assert factor["state_changes"] == 1 and factor["state_change_rate"] == 1
+    assert factor["mean_entropy"] == pytest.approx(0, abs=1e-5)
+    output = tmp_path / "actual-chain.png"
+    create_belief_dynamics_visualization(history, output)
+    assert output.read_bytes().startswith(b"\x89PNG")
+    assert history == original
 
-    def setUp(self):
-        """Set up test fixtures."""
-        # Create a sample history with beliefs
-        self.sample_history = {
-            'timesteps': [
-                {'beliefs': [[0.8, 0.1, 0.1], [0.7, 0.3]]},
-                {'beliefs': [[0.6, 0.3, 0.1], [0.5, 0.5]]},
-                {'beliefs': [[0.4, 0.5, 0.1], [0.3, 0.7]]},
-                {'beliefs': [[0.2, 0.7, 0.1], [0.2, 0.8]]},
-                {'beliefs': [[0.1, 0.8, 0.1], [0.1, 0.9]]}
-            ]
-        }
 
-        # Create output directory
-        self.output_dir = os.path.join('tests', 'output', 'belief_dynamics')
-        os.makedirs(self.output_dir, exist_ok=True)
+def test_heatmap_centers_labels_and_probabilities_are_real(tmp_path, monkeypatch):
+    _, run = chain()
+    captured = {}
+    original = OutputPolicy.save_figure
+    def capture(policy, figure, destination, **options):
+        ax = figure.axes[0]
+        captured["extent"] = list(ax.images[0].get_extent())
+        captured["values"] = np.asarray(ax.images[0].get_array()).copy()
+        captured["labels"] = [label.get_text() for label in ax.get_yticklabels()]
+        captured["origin"] = ax.images[0].origin
+        return original(policy, figure, destination, **options)
+    monkeypatch.setattr(OutputPolicy, "save_figure", capture)
+    create_belief_dynamics_visualization(run["history"], tmp_path / "heatmap.png",
+                                        custom_state_labels=[["zero", "one", "two"]])
+    assert captured["origin"] == "lower"
+    assert captured["extent"] == [-0.5, 1.5, -0.5, 2.5]
+    assert captured["labels"] == ["zero", "one", "two"]
+    np.testing.assert_allclose(captured["values"], [[1, 0], [0, 1], [0, 0]], atol=1e-6)
 
-    def test_extract_belief_history(self):
-        """Test extracting belief history from simulation data."""
-        beliefs, num_timesteps, num_states = extract_belief_history(self.sample_history)
 
-        # Verify results
-        self.assertEqual(num_timesteps, 5)
-        self.assertEqual(len(beliefs), 5)
-        self.assertEqual(num_states, [3, 2])
+@pytest.mark.parametrize("beliefs", [
+    [], [[[0.5, 0.5]], []], [[[0.5, 0.5]], [[1]]],
+    [[[0.2, 0.2]]], [[[float("nan"), 1]]], [[[-1, 2]]],
+])
+def test_missing_ragged_or_invalid_history_is_not_filled_or_compressed(beliefs):
+    with pytest.raises(ValueError):
+        calculate_belief_statistics(beliefs)
 
-        # Verify empty history handling
-        empty_beliefs, empty_timesteps, empty_states = extract_belief_history({})
-        self.assertEqual(empty_timesteps, 0)
-        self.assertEqual(len(empty_beliefs), 0)
 
-    @pytest.mark.slow
-    def test_create_belief_dynamics_visualization(self):
-        """Test creating belief dynamics visualization."""
-        # Define the base output directory
-        base_output_dir = os.path.join('tests', 'output')
-        belief_output_dir = os.path.join(base_output_dir, 'belief_dynamics')
-        os.makedirs(belief_output_dir, exist_ok=True)
+def test_zero_probability_entropy_and_single_transition_denominator():
+    statistics = calculate_belief_statistics([[[1, 0]]])
+    assert statistics["factors"][0]["entropy_over_time"] == [0]
+    assert statistics["factors"][0]["state_change_rate"] == 0
+    assert calculate_belief_statistics([[[1, 0]], [[0, 1]]])["factors"][0]["state_change_rate"] == 1
 
-        output_file = os.path.join(belief_output_dir, 'test_belief_vis.png')
 
-        # Create visualization
-        vis_path = create_belief_dynamics_visualization(
-            self.sample_history,
-            output_file,
-            title="Test Belief Dynamics"
-        )
-
-        # Verify file was created
-        self.assertTrue(os.path.exists(output_file))
-        self.assertEqual(vis_path, output_file)
-
-        # Test with custom labels
-        custom_labels = [
-            ["State A", "State B", "State C"],
-            ["Position 1", "Position 2"]
-        ]
-
-        custom_output = os.path.join(belief_output_dir, 'test_belief_custom_labels.png')
-        create_belief_dynamics_visualization(
-            self.sample_history,
-            custom_output,
-            custom_state_labels=custom_labels
-        )
-
-        # Verify custom labeled file was created
-        self.assertTrue(os.path.exists(custom_output))
-
-        # Test with empty history
-        empty_path = create_belief_dynamics_visualization({}, os.path.join(belief_output_dir, 'empty.png'))
-        self.assertIsNone(empty_path)
-
-    def test_calculate_belief_statistics(self):
-        """Test calculating statistics from belief data."""
-        # Extract beliefs
-        beliefs, _, _ = extract_belief_history(self.sample_history)
-
-        # Calculate statistics
-        stats = calculate_belief_statistics(beliefs)
-
-        # Verify structure and content
-        self.assertEqual(stats['num_factors'], 2)
-        self.assertEqual(stats['num_timesteps'], 5)
-        self.assertEqual(len(stats['factors']), 2)
-
-        # Verify specific factor statistics
-        factor0 = stats['factors'][0]
-        self.assertEqual(factor0['num_states'], 3)
-        self.assertTrue('mean_entropy' in factor0)
-        self.assertTrue('state_changes' in factor0)
-        self.assertTrue('max_belief_states' in factor0)
-
-        # Verify empty input handling
-        empty_stats = calculate_belief_statistics([])
-        self.assertTrue('error' in empty_stats)
-
-if __name__ == '__main__':
-    unittest.main()
+def test_incomplete_labels_fail_instead_of_mislabeling_state_rows(tmp_path):
+    _, run = chain()
+    with pytest.raises(ValueError):
+        create_belief_dynamics_visualization(run["history"], tmp_path / "bad.png",
+                                            custom_state_labels=[["not", "enough"]])
+    assert not (tmp_path / "bad.png").exists()

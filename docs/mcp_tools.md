@@ -1,175 +1,136 @@
 # MCP Tools Reference
 
-This document describes the tools that this project actually exposes. Every tool
-is a thin wrapper over a method on `PyMDPInterface` (`src/mcp/utils.py`), which
-calls the real PyMDP library. The two servers — the MCP tools in `src/main.py`
-(delivered over SSE or stdio) and the REST API in `src/mcp/server/app.py` — both
-route to these same methods, so their behavior is identical.
+MCP, REST and `DirectMCPClient` dispatch through the explicit
+[`TOOL_NAMES` registry](../src/mcp/api.py). Discovery returns strict native
+JSON argument schemas. Unknown tools, extra fields and invalid types are
+rejected; arbitrary public attributes are not remotely callable. Separate
+server/client instances share this contract, not mutable state.
 
-> **Note on scope.** Earlier drafts of these docs listed tools such as
-> `enable_jax`, `run_tmaze_example`, `calculate_kl_divergence`,
-> `calculate_entropy`, `set_temporal_horizon`, `deep_planning`,
-> `register_environment`, `connect_agent_to_environment`, `enable_learning`,
-> `update_model`, `create_simulation`, `analyze_simulation`, `jax_infer_states`
-> and `run_learning_example`. **None of those exist in the code.** The only tools
-> available are the `PyMDPInterface` methods below.
+## Agent creation and model definition
 
-## The core methods
+`create_agent(name, generative_model, normalize=False)` accepts native,
+unbatched families of arrays:
 
-### Agent creation and model definition
+- `A`: likelihood matrices `[outcome, state]`.
+- `B`: transition matrices `[next_state, current_state, action]`.
+- `C`: finite signed outcome utilities, not probability distributions.
+- `D`: normalized state priors.
+- Optional `pA`/`pB`: finite nonnegative concentration arrays with the
+  corresponding shapes and supported columns.
 
-#### `create_agent(name, generative_model)`
+`A` and `B` are required. Shape, finite-value, support and allocation limits
+are checked before construction. Normalization is explicit, never silently
+applied to invalid input. Admission and exported copies do not mutate the
+caller's arrays. `get_agent(agent_id)` returns the complete unbatched model,
+settings and dimension metadata, including singleton dimensions.
 
-Create an active inference agent from a generative-model dict containing `A`
-(observation likelihood) and `B` (state transitions), with optional `C` (prior
-preferences) and `D` (prior beliefs). `A` and `B` are required.
+Settings are admitted at construction by [`models.py`](../src/mcp/models.py).
+Filtering supports `fpi` and single-factor `exact`; unsupported smoothing,
+algorithms and per-call method/horizon changes fail rather than being ignored.
+Passing learning configuration or concentrations does not expose a learning
+update API.
 
-```python
-pymdp.create_agent("agent_1", {
-    "A": [[...]],   # observation model
-    "B": [[...]],   # transition model
-    "C": [[...]],   # optional priors over outcomes
-    "D": [[...]],   # optional priors over states
-})
-```
+`define_generative_model(A_dims, B_dims, seed=None)` constructs bounded
+normalized models. `create_gridworld_agent(name, grid_size, reward_positions,
+...)` constructs the position/reward model matching that grid. Use it with
+`create_grid_world_env` of the same dimensions and rewards; an arbitrary
+two-state model cannot observe a nine-state grid.
 
-Returns agent metadata (number of observation modalities, state factors, and
-controls).
+## Observation, action and reset lifecycle
 
-#### `define_generative_model(A_dims, B_dims)`
+1. Obtain an actual environment observation. `infer_states(agent_id,
+   observation)` requires exactly one integer outcome per declared modality.
+2. `infer_policies(agent_id)` requires inferred beliefs; it never invents
+   an observation. It retains the complete policy posterior and the native
+   negative expected-free-energy vector, with its sign-reversed EFE.
+3. `sample_action(agent_id)` returns an action and an `action_id`.
+   Repeated selection returns the pending action without advancing the prior.
+4. `step_environment(env_id, action, agent_id, action_id)` commits that action
+   only after a successful matching transition. A caller executing a real
+   external transition instead uses `commit_action(agent_id, action_id)`.
+   Commit advances the predictive prior exactly once; do not do both.
+5. `reset_agent` restores `D` and invalidates pending tokens.
+   `reset_environment` resets the physical environment; it is a distinct
+   operation, not a replacement for resetting the agent.
 
-Build **random** `A` and `B` matrices from dimension lists, plus default flat `C`
-and uniform `D` priors.
+Grid actions are up/right/down/left/stay. Grid reset defaults to the origin;
+custom reset defaults to its first state. Explicit `reset_mode="configured"`
+uses the configured start. `terminate_on_reward` controls the terminal flag;
+`run_simulation`/`run_session` retain fixed-step execution unless
+`stop_on_done=True` is explicitly requested. Empty `reward_positions=[]`
+remains empty. These defaults are not new scientific policy decisions.
 
-- `A_dims`: list of `[obs_dim, state_dim]` per observation modality.
-- `B_dims`: list of `[state_to, state_from, action_dim]` per state factor.
+## Runs and sessions
 
-```python
-model = pymdp.define_generative_model(
-    A_dims=[[3, 4]],
-    B_dims=[[4, 4, 4]],
-)
-```
+`run_simulation(agent_id, env_id, num_steps=10, save_history=True,
+stop_on_done=False)` returns an actual `simulation_id`, executed `num_steps`,
+requested `requested_steps`, rewards and measured history. Records distinguish
+pre-transition observations, beliefs and physical state from next-state fields;
+trajectory plots include the final endpoint.
 
-#### `create_gridworld_agent(name, grid_size, reward_positions, ...)`
+`create_session(session_id, agent_id, env_id)` binds existing resources.
+Repeating the same binding is idempotent; conflicting reuse fails.
+`run_session` continues that session and retains cumulative history and actual
+run IDs. State is process-local, bounded and lost on restart; no distributed
+or durable session guarantee is provided.
 
-Create an agent tailored to a gridworld: a position observation (identity map of
-the grid) plus a reward observation, with strong preference for reward cells.
+## Measurements and plots
 
-```python
-pymdp.create_gridworld_agent(
-    "agent_1",
-    grid_size=[3, 3],
-    reward_positions=[[2, 2]],
-    action_precision=1.0,
-    inference_horizon=5,
-)
-```
+`calculate_free_energy(A_matrix, prior, observation, q_states)` uses
+`F = KL(q || prior) - E_q[log p(observation | state)]`.
+The entropy contribution `sum(q * log(q))` is signed, not positive entropy.
+`infer_states_from_observation` computes the corresponding stable Bayes
+posterior and evidence. Zero support is rejected or explicitly reported as
+infinite/unavailable; nonfinite measurements are not fabricated as finite JSON.
 
-### Environments
+`visualize_agent_model`, `visualize_simulation`,
+`visualize_belief_dynamics`, `plot_belief_dynamics` and `analyze_free_energy`
+consume actual model/history data. No arbitrary risk/ambiguity decomposition
+or synthetic free-energy fallback is supplied. The model overview labels its
+first-two-entry selection and B control 0; model JSON remains complete.
 
-#### `create_grid_world_env(name, grid_size, reward_positions)`
+Server output confinement applies to primary files and every reported
+companion, including symlink parents and existing symlink files. Trusted local
+core output and client-side downloads are separate custody boundaries.
+HTTP PNG/SVG responses contain image bytes with matching content types; request
+`format=svg` explicitly when downloading to an SVG filename.
 
-Create a gridworld environment. Returns environment metadata.
+Core allocation, steps, retained runs/logs, protocol bytes/channels/queues and
+animation frames are bounded by trusted launch configuration. Expired detail
+is reported unavailable, never borrowed from a later run. These caps are not
+measured RSS, latency or throughput guarantees.
 
-```python
-env = pymdp.create_grid_world_env("world_1", [3, 3], [[2, 2]])
-```
+## Registry inventory
 
-#### `step_environment(env_id, action)`
-
-Advance an environment by one step given an action index (or list of indices).
-Returns the new observation, reward, and status.
-
-```python
-result = pymdp.step_environment("world_1", [1])
-```
-
-#### `reset_environment(env_id)`
-
-Reset an environment to its initial state and return the initial observation.
-
-```python
-pymdp.reset_environment("world_1")
-```
-
-### Inference and action selection
-
-#### `infer_states(agent_id, observation, method="FPI")`
-
-Compute a posterior over hidden states given an observation. `method` selects the
-message-passing algorithm PyMDP uses (`FPI`, `BP`, etc.).
-
-```python
-result = pymdp.infer_states("agent_1", [0, 2])
-# -> {"posterior_states": [[...], ...]}
-```
-
-#### `infer_policies(agent_id, planning_horizon=None)`
-
-Optimize the belief over policies by expected free energy, returning the policy
-posterior and expected free energy.
-
-```python
-result = pymdp.infer_policies("agent_1")
-```
-
-#### `sample_action(agent_id, planning_horizon=None)`
-
-Sample an action from the agent's policy posterior.
-
-```python
-result = pymdp.sample_action("agent_1")
-```
-
-### Simulation
-
-#### `run_simulation(agent_id, env_id, num_steps=10, ...)`
-
-Run the full perception–action loop: infer states, infer policies, sample an
-action, step the environment, and record the history (`observations`, `actions`,
-`rewards`, `states`, `policies`, `free_energies`).
-
-```python
-result = pymdp.run_simulation("agent_1", "world_1", num_steps=10)
-```
-
-### Introspection
-
-#### `get_agent(name)` / `get_environment(name)`
-
-Retrieve a stored agent or environment as serializable JSON.
-
-#### `get_all_functions()`
-
-Return the list of all public methods available on the interface.
-
-```python
-pymdp.get_all_functions()
-# -> {"functions": ["calculate_free_energy", "create_agent", ...]}
-```
-
-## Additional helpers
-
-The interface also exposes a few non-core helpers used for analysis:
-
-| Method | Description |
+| Group | Tools |
 | --- | --- |
-| `validate_generative_model(model, check_normalization=True)` | Validate structure and normalization of `A`/`B` matrices. |
-| `calculate_free_energy(A_matrix, prior, observation, q_states)` | Compute variational free energy (accuracy/complexity decomposition). |
-| `infer_states_from_observation(A_matrix, prior, observation)` | Single-step posterior via Bayes' rule (`pymdp.maths.get_joint_likelihood`). |
-| `get_all_agents` / `get_all_environments` / `get_all_simulations` | List everything stored in the interface registries. |
+| Models | `create_agent`, `define_generative_model`, `create_gridworld_agent`, `validate_generative_model`, `get_agent`, `get_all_agents` |
+| Filtering/control | `infer_states`, `infer_policies`, `sample_action`, `commit_action`, `reset_agent` |
+| Environments | `create_grid_world_env`, `step_environment`, `reset_environment`, `get_environment`, `get_all_environments` |
+| Runs | `run_simulation`, `get_simulation`, `get_all_simulations`, `get_computation_logs` |
+| Sessions | `create_session`, `get_session`, `get_session_history`, `run_session`, `get_all_sessions` |
+| Plots | `visualize_agent_model`, `visualize_simulation`, `visualize_belief_dynamics`, `plot_belief_dynamics`, `analyze_free_energy` |
+| Numerical helpers | `calculate_free_energy`, `infer_states_from_observation` |
+| Discovery | `get_all_functions` |
 
-Visualization methods (`visualize_belief_dynamics`, `plot_belief_dynamics`,
-`analyze_free_energy`, `visualize_simulation`) are attached to the interface by
-`src/mcp/visualization/extensions.py`.
+Delete/update CRUD, comparison, distributed execution, custom inference and
+learning-update tools are not offered. Consult actual discovery for argument
+schemas rather than treating the full upstream
+[PyMDP API](https://pymdp-rtd.readthedocs.io/en/latest/) as this wrapper's API.
 
-## How a tool call flows
+## Transport envelopes
 
-1. A client calls a tool (over MCP SSE/stdio, or an HTTP endpoint).
-2. The server looks up the corresponding `PyMDPInterface` method.
-3. `PyMDPInterface` calls the unmodified PyMDP API.
-4. Results (NumPy object arrays) are converted to plain JSON via `NumpyEncoder`
-   and `_convert_from_obj_array`, and returned to the client.
+REST `POST /tools/create_agent` accepts an object, not a JSON-string model:
 
-For the full underlying PyMDP API, see the [PyMDP documentation](https://pymdp-rtd.readthedocs.io/en/latest/).
+```json
+{"params":{"name":"one","generative_model":{"A":[[[1]]],"B":[[[[1]]]],"D":[[1]]},"normalize":false}}
+```
+
+HTTP success has one `result` envelope; `MCPClient` unwraps it once.
+MCP uses JSON-RPC initialization followed by `notifications/initialized`,
+`tools/list` and `tools/call`, with protocol version `2025-03-26`.
+Stdio stdout contains protocol frames only. SSE opens a bodyless `/sse`
+channel and posts to its `/messages?session_id=...` endpoint; responses are
+delivered once on that channel. Disconnect releases its budget even when
+the consumer blocks an ASGI send. See [setup](setup.md) for launch boundaries.
+

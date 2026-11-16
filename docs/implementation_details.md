@@ -1,139 +1,68 @@
 # Implementation Details
 
-This document describes how the project actually works, at the level of the
-source code in `src/`.
+The [architecture](ARCHITECTURE.md) maps the modules; the
+[tool reference](mcp_tools.md) defines public arguments, lifecycle and
+measurement semantics. These are supported contracts, not descriptions of
+retired duplicate implementations.
 
-## Layered architecture
+## Dispatch and state
 
-1. **MCP server layer** — `src/main.py` declares MCP tools (`@mcp.tool()`) on
-   the bundled FastMCP implementation in `src/mcp/server/fastmcp.py`, which runs
-   over SSE (default) or stdio.
-2. **FastAPI HTTP layer** — `src/mcp/server/app.py` builds a FastAPI app
-   (`create_app()`, `app = create_app()` at module scope) exposing the same
-   capability set as REST endpoints, served with uvicorn.
-3. **PyMDP interface layer** — `PyMDPInterface` in `src/mcp/utils.py` is the
-   single bridge between the servers and PyMDP.
-4. **PyMDP (dependency)** — the unmodified `inferactively-pymdp` pip package.
+`ToolRegistry` is the single explicit public surface. Its strict schemas reject
+unknown parameters and dispatch to an owned `PyMDPInterface`.
+`create_app()` creates independent REST state; there is no eager global `app`
+or parallel transport-local session registry. `src/main.py` starts the bundled
+MCP protocol over stdio or SSE.
 
-## `PyMDPInterface`
+Native Agent configuration is immutable. Admission validates shapes, support,
+finite values and bounded dimensions before allocating. Normalization is
+opt-in and exported model JSON is complete and unbatched. The core retains
+predictive priors and pending action tokens separately from the native model.
 
-The central class. Its constructor keeps in-memory state:
+## Runs and measurements
 
-```python
-def __init__(self):
-    self.agents = {}             # name -> pymdp Agent
-    self.environments = {}       # name -> environment object/dict
-    self.simulation_history = {}
-    self.computation_logs = {}
-    self.debug_mode = True
-    self.sessions = {}           # session id -> {agent, environment, history}
-```
+Runs store actual pre-transition observations, beliefs, physical states,
+actions and next-state fields. `num_steps` is executed work;
+`requested_steps` retains the request. Sessions retain cumulative history and
+actual run IDs. Resetting an environment alone does not reset agent beliefs.
 
-Agent creation normalizes the supplied `A`/`B` (and optional `C`/`D`) JSON into
-the batched NumPy form the current PyMDP expects, then constructs a PyMDP
-`Agent` with all configuration passed at construction time (PyMDP agents are
-immutable equinox dataclasses) and stores it by name:
+VFE uses the actual observation/prior and signed entropy term. Full policy
+posteriors and native negative EFE are retained, with explicit sign conversion
+for positive EFE. Unsupported/infinite measurements remain explicit;
+arbitrary risk/ambiguity terms and fallback traces are absent.
+Run logs cannot include later runs; evicted detail is unavailable.
 
-```python
-def create_agent(self, name, generative_model):
-    A = generative_model.get("A", [])
-    B = generative_model.get("B", [])
-    C = generative_model.get("C", None)
-    D = generative_model.get("D", None)
-    # ... normalize A columns to sum to 1, B along destination states ...
-    # ... add a leading batch dimension of 1 to every matrix (_to_batch) ...
-    agent = Agent(
-        A=A_b, B=B_b, C=C_b, D=D_b,
-        policy_len=..., num_controls=..., control_fac_idx=...,
-    )
-    self.agents[name] = agent
-    return {"name": name, "num_observation_modalities": ..., "num_state_factors": ...}
-```
+## Protocol and output custody
 
-Environment creation builds a JSON-serializable environment **dict** (grid
-size, reward positions, current state) and stores it in `self.environments`;
-step/reset behavior is implemented inline in `step_environment` /
-`reset_environment` (`_step_gridworld`), so environments carry no attached
-functions:
+MCP implements the `2025-03-26` initialize/initialized/tools lifecycle,
+notifications and JSON-RPC error distinctions. Stdio stdout is protocol-only.
+SSE responses belong to one bounded channel; response lifetime owns cleanup
+on normal or backpressured disconnect.
 
-```python
-def create_grid_world_env(self, name, grid_size, reward_positions):
-    # returns environment metadata and registers the environment
-    self.environments[name] = env
-    return {"name": name, ...}
-```
+REST returns one native result envelope. PNG/SVG endpoints return actual bytes
+and matching content types. `OutputPolicy` confines both primary files and
+companions, including symlink parents/files. A toolkit download writes to the
+caller's trusted local destination, not an arbitrary server path.
 
-## MCP server (`src/main.py`)
+## Clients and processes
 
-Each tool is an async function that receives an MCP `Context`, pulls the shared
-`PyMDPInterface` from the lifespan context, calls the corresponding
-`PyMDPInterface` method, and serializes the result with `NumpyEncoder`:
+Import `MCPClient`, `DirectMCPClient` and `MCPToolKit` from `mcp.client`.
+Direct mode is explicit registry dispatch; it does not import `src/main.py`,
+probe HTTP, construct mock contexts or fall back after a remote failure.
+Client/remote errors propagate. Config contains `server{host,port,use_ssl}`,
+`auth{enabled,token}` and `options{timeout}`; enabled auth controls outbound
+headers only, not server authentication or automatic retries.
 
-```python
-@mcp.tool()
-async def create_agent(ctx: Context, name: str, generative_model: str) -> str:
-    pymdp_interface = ctx.request_context.lifespan_context.pymdp_interface
-    model_dict = json.loads(generative_model)
-    result = pymdp_interface.create_agent(name, model_dict)
-    return json.dumps({"result": {"agent": result}}, cls=NumpyEncoder)
-```
+The REST launcher is loopback/single-worker/no-reload. The example runner
+tracks its own PID and instance nonce, verifies readiness, enforces deadlines,
+preserves failed/not-run dispositions and reaps only its owned process.
+See [setup](setup.md) and [example commands](../scripts/README.md).
 
-`src/mcp/server/fastmcp.py` provides a minimal `FastMCP` class that registers
-tools via `@mcp.tool()`, extracts their parameters from the function signature,
-and serves them over SSE (`/schema`, `/tools`, `/invoke`, `/sse`) or stdio
-(line-delimited JSON on stdin/stdout). It reads `HOST`/`PORT`/`TRANSPORT` from the
-environment (defaults `0.0.0.0`, `8050`, `sse`).
+## Limits and qualification
 
-## FastAPI HTTP server (`src/mcp/server/app.py`)
+Trusted launch configuration bounds model elements, policy combinations,
+steps, entities, retained runs/logs, protocol traffic and animation frames.
+These are admission limits, not measured memory/performance promises.
+Docker provisions uv 0.13.8, a frozen no-dev/non-editable environment and
+starts the installed interpreter directly. Source tests do not certify an
+image build or installed-artifact runtime.
 
-Built with `create_app()` and exposed as `app`. Highlights:
-
-- `GET /ping` — health check.
-- `GET /tools`, `POST /tools/{tool_id}` — list and invoke tools.
-- `GET /agents`, `GET /agents/{agent_id}` — list/retrieve agents.
-- `GET /environments`, `POST /environments`, `GET /environments/{env_id}` —
-  manage environments.
-- `GET /simulations`, `POST /sessions`, `POST /sessions/{id}/run` — run and
-  query simulation sessions.
-- `/agents/{id}/visualize`, `/sessions/{id}/visualize`,
-  `/analyze/free_energy/{id}`, `/analyze/beliefs/{id}` — analysis and
-  visualization.
-
-It maintains a module-level `pymdp_interface` plus a `sessions` registry so
-state persists across requests.
-
-## Data conversion
-
-- `NumpyEncoder` (in `src/mcp/utils.py`) serializes `np.integer`,
-  `np.floating`, `np.ndarray`, and `np.bool_` to native JSON types.
-- `_convert_to_obj_array` / `_convert_from_obj_array` / `_ensure_native_types`
-  convert between plain JSON lists and PyMDP's nested NumPy object arrays.
-
-## Visualization
-
-`src/mcp/visualization/extensions.py`'s `_add_visualization_methods()` attaches
-methods to `PyMDPInterface` at runtime: `plot_belief_dynamics` (heatmaps of
-belief evolution, one panel per state factor) and `analyze_free_energy` (plots +
-metrics of the free-energy process). The `mcp` package's `visualization` module
-also exports generative-model, free-energy, and simulation plotting helpers.
-
-## Clients
-
-`src/mcp/client.py` and `src/mcp/client/` provide:
-
-- **`MCPClient`** — async aiohttp client against the HTTP server (`ping`,
-  `get_tools`, `call_tool`); can log requests/responses and write outputs to a
-  directory.
-- **`DirectMCPClient`** — calls the `src/main.py` tools in-process with a mock
-  context, no server needed (useful for tests/development).
-- **`MCPToolKit`** (`client/tools.py`) — higher-level convenience wrappers.
-
-There is also `get_best_client(output_dir=None)`, which probes for a running
-server at `http://localhost:8050/schema` and falls back to `DirectMCPClient`.
-
-## Session management
-
-Sessions bind an agent to an environment and accumulate a per-timestep history
-(`observations`, `actions`, `rewards`, `states`, `policies`, `free_energies`).
-They are stored in `PyMDPInterface.sessions` and queried/visualized through the
-HTTP layer.

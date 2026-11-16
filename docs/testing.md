@@ -16,70 +16,45 @@ Use the gate, not remembered command lines (see the [Run Guide](RUN_GUIDE.md)):
 Underneath, both arms are one pytest invocation over `tests/`; `test` adds
 `-m "not slow"`. The exact commands live in `run.sh`, never in prose or YAML.
 
-## The `slow` marker
+## Focused contracts and collection
 
-`pyproject.toml` declares one marker, `slow`, and it is applied to the tests
-that run a full PyMDP simulation or visualization pass — the eight that
-`pytest --durations` shows dominating suite call time (gridworld simulation
-visualization, both `visualize_simulation` and `run_simulation` pairs, the
-multi-modality agent plot, and the belief-dynamics plot).
+The [test inventory](../tests/README.md) lists the native lifecycle, model,
+environment, numerical, transport, renderer/output and owned-process modules.
+Use actual pytest collection/outcomes; counting source declarations does not
+measure executed parameter cases.
 
-`./run.sh test` deselects exactly those; `./run.sh test-full` runs everything.
-A benchmark or CI run that needs the visualization artifacts must use
-`test-full`.
+The `slow` marker is a selector, not a permanent count or performance claim.
+A full gate runs every collected case. A focused proof names its selection,
+retains skips/failures and records its source/runtime/process boundaries.
+After a repair, prior passing evidence can be retained while only affected
+contracts are rerun; that is not a newly executed full gate.
 
-## How many tests, and in which files
+## Generated facts
 
-Counts are generated, not maintained here: the collected total, the per-file
-breakdown, and the `slow`-marked split are all in
+Collected counts, per-file breakdowns and arm timings belong to
 [`_generated/gate-facts.md`](_generated/gate-facts.md), produced by
-`scripts/gate_facts.py`. `./run.sh docs` fails if that page and its receipt
-disagree, so there is never a second, hand-edited copy to drift.
+`scripts/gate_facts.py`. A focused source receipt does not refresh those
+historical producer records. Do not hand-edit generated metrics or infer a
+current lint/coverage/GNN pass from earlier results.
 
-A raw `grep -c 'def test_'` over `tests/` over-reports the collection: five
-matches are not pytest tests (MCP handler functions defined inside
-`tests/test_mcp_full.py`, and one literal `def test_{specific_function}(self)`
-inside a template string in `tests/test_template.py`).
+## Prepared environment and outputs
 
-> Offline note: the suite requires the resolved environment (`inferactively-pymdp`
-> and the other declared dependencies). On a bare interpreter without those
-> packages, `pytest` cannot import the modules and collection fails — install the
-> lock first with `./run.sh setup`.
+Use the existing resolved project interpreter, explicit source selection and
+owned off-checkout temporary/cache roots. Dependency provisioning is a
+separate authorized step. Follow qualified GitVault execution requirements
+where applicable.
 
-## Legacy runners
-
-Before pytest was standardised, two helpers ran and organised tests by category.
-They still work when the dependencies are installed:
-
-```bash
-./run_and_organize.sh                       # all tests
-./run_and_organize.sh --category visualization
-./run_and_organize.sh --file test_belief_dynamics.py
-./run_and_organize.sh --summary
-uv run python run_all_tests.py --category belief_dynamics
-```
-
-`run_and_organize.sh` (inside `tests/`) is a thin wrapper over
-`run_all_tests.py`; the categories are defined in `run_all_tests.py`'s
-`category_patterns`. They are conveniences for browsing output by category, not
-the gate.
-
-## Test outputs
-
-Every run writes under `tests/output/` (gitignored): `generative_models/`,
-`simulations/`, `belief_dynamics/`, `free_energy/`, `logs/`, and `results/`.
-See [`../tests/README.md`](../tests/README.md) and
-[`../tests/DOCUMENTATION_TESTING.md`](../tests/DOCUMENTATION_TESTING.md) for the
-full category and output reference.
+Fixtures produce real JSON/images and bounded child processes in isolated
+temporary paths. The legacy category organizers, shared-output arrangement,
+inert test template and `src/main.py test` command were retired.
+See [verification details](../tests/DOCUMENTATION_TESTING.md).
 
 ## Adding tests
 
-1. Add a `tests/test_*.py` file (pytest- or unittest-style; both are collected).
-2. Reuse the modular code under `src/mcp/` rather than duplicating it.
-3. Register the file in `run_all_tests.py`'s `category_patterns` if it should
-   run under a named category.
-4. Mark a test `@pytest.mark.slow` if it runs a full simulation or
-   visualization pass, so the fast arm stays fast.
+Add deterministic `tests/test_*.py` consumer regressions, reuse actual project
+implementations, and exercise real filesystem/process/renderer boundaries.
+Do not copy algorithms, fabricate output files, suppress failures or treat
+source-wording assertions as behavioral acceptance.
 
 ## CI
 

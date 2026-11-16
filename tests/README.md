@@ -1,102 +1,52 @@
 # MCP-PyMDP Tests
 
-This directory contains tests for the MCP-PyMDP project. The gate is
-`./run.sh` from the repository root; use it instead of remembered commands:
+The canonical gate remains `./run.sh`; its arms and measured facts are in
+the [run guide](../docs/RUN_GUIDE.md) and
+[generated gate facts](../docs/_generated/gate-facts.md).
+A focused receipt is not a replacement for the full gate or its measurements.
+
+## Focused contracts
+
+| Module | Consumer-visible contract |
+| --- | --- |
+| `test_core_contracts.py` | Actual observation/commit/reset lifecycle, prior ownership and bounded retention |
+| `test_environment_contract.py` | Rectangular grid actions, custom modalities, reset and terminal options |
+| `test_pymdp_interface.py` | Native model/support admission, immutable exports and observation validation |
+| `test_additional_functions.py` | Stable numerical Bayes/VFE and admitted native configuration |
+| `test_belief_dynamics.py` | Actual renderer arrays, state labels and pre/next-state separation |
+| `test_agent_visualization.py` | Measured histories/logs, real GIF frames and primary/companion confinement |
+| `test_mcp_tools.py` | REST/direct consumers, strict schemas, actual JSON/image bytes and errors |
+| `test_mcp_full.py` | Real stdio JSON-RPC and ASGI SSE lifecycle, budgets and disconnect cleanup |
+| `test_example_processes.py` | Real process ownership, readiness, deadlines, failures and measured examples |
+
+`contract_support.py` supplies shared small inputs and real ASGI exchanges.
+`test_gnn_conformance.py` protects existing local GNN verdict handling; those
+unit controls alone are not a pinned-parser conformance run.
+
+## Running
+
+With dependencies already prepared, a focused payload is an ordinary pytest
+selection, for example:
 
 ```bash
-./run.sh test        # fast arm: the suite minus tests marked `slow`
-./run.sh test-full   # every collected test
+"$PROJECT_PY" -B -m pytest -q -p no:cacheprovider tests/test_core_contracts.py
 ```
 
-Underneath, both arms are one pytest invocation over `tests/`. Collected counts
-and the `slow` split are generated into
-[`../docs/_generated/gate-facts.md`](../docs/_generated/gate-facts.md).
+Select this checkout's `src`, use an owned off-checkout temporary/cache root,
+and use the qualified GitVault test runner where repository governance
+requires it. Preserve real stdout/stderr, selected runtime/source identities,
+case outcomes and child settlement. Do not silently deselect failed cases.
 
-The legacy organizers (`run_and_organize.sh`, `run_all_tests.py`) still work
-for running tests by category and organizing the outputs; they need the
-project's dependencies installed (use the repository virtualenv, e.g.
-`uv run python ...`, or `python3` after `uv pip install -e .`).
+The legacy category organizers and inert `test_template.py` were retired.
+There is no `src/main.py test` command. New regressions exercise the actual
+consumer boundary; copied renderers, fabricated image files, source-wording
+assertions and suppressed/skipped failures are not substitute proof.
 
-## Running Tests
+## Output and limits
 
-The easiest way to run tests and organize outputs is `run_and_organize.sh`:
+Fixtures use isolated temporary paths, actual images/JSON, and bounded real
+subprocesses. No shared `tests/output` organizer is required. Inspect an actual
+rendered surface as well as its arrays. These tests do not certify an image
+build, installed wheel, distributed service, scientific result, full
+coverage/lint gate or merge/release permission.
 
-```bash
-# Run all tests
-./run_and_organize.sh
-
-# Run a specific category of tests
-./run_and_organize.sh --category visualization
-
-# Run tests for belief dynamics
-./run_and_organize.sh --category belief_dynamics
-
-# Run a specific test file
-./run_and_organize.sh --file test_belief_dynamics.py
-
-# Generate a detailed summary report
-./run_and_organize.sh --summary
-
-# Increase verbosity
-./run_and_organize.sh --verbose
-```
-
-The underlying runner is `run_all_tests.py` (in this directory); the shell
-script is a thin wrapper around it. You can also invoke it directly:
-
-```bash
-uv run python run_all_tests.py --category belief_dynamics
-uv run python run_all_tests.py --file test_pymdp_interface.py --summary
-```
-
-You can also run tests through the main application:
-
-```bash
-# From the project root
-uv run python src/main.py test --category belief_dynamics
-```
-
-## Test Categories
-
-The tests are organized into the following categories:
-
-- `interface`: Tests for the PyMDP interface
-- `mcp`: Tests for MCP server and tools
-- `advanced`: Tests for additional functionality
-- `visualization`: Tests for visualization capabilities
-- `belief_dynamics`: Tests for belief dynamics functionality
-- `core`: Core tests (interface + mcp)
-- `all`: All tests
-
-## Test Outputs
-
-Test outputs are organized in the `tests/output` directory, with subdirectories
-for different types of outputs (regenerated by every run; gitignored):
-
-- `generative_models`: Visualizations of generative models
-- `simulations`: Simulation visualizations
-- `belief_dynamics`: Belief dynamics visualizations
-- `free_energy`: Free energy component visualizations
-- `logs`: Log files
-- `results`: Test result data
-
-## Adding New Tests
-
-When adding new tests:
-
-1. Create a new test file in this directory (`test_*.py`, pytest- or
-   unittest-style — both are supported).
-2. Use the appropriate test class or create a new one.
-3. Add the test file to the category patterns in `run_all_tests.py`
-   (`category_patterns`) if it should run under a specific category.
-4. Ensure tests use the modular code from `src/mcp/` rather than duplicating
-   functionality.
-
-## Notes on Belief Dynamics
-
-If the belief_dynamics directory is empty after running tests, you may need to
-run tests that specifically generate belief dynamics visualizations:
-
-```bash
-./run_and_organize.sh --category visualization
-```

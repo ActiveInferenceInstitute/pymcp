@@ -215,7 +215,7 @@ def generate_test_report(results_dir, output_file, report_title="Test Results"):
         Path to the generated report
     """
     # Create output directory if it doesn't exist
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    os.makedirs(os.path.dirname(os.path.abspath(output_file)), exist_ok=True)
 
     # Get all JSON result files
     result_files = [f for f in os.listdir(results_dir) if f.endswith('.json')]
@@ -302,7 +302,7 @@ def plot_test_results(results, output_file, title="Test Results"):
         Path to the saved plot
     """
     # Create output directory if it doesn't exist
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    os.makedirs(os.path.dirname(os.path.abspath(output_file)), exist_ok=True)
 
     # Extract metrics to plot
     metrics = []
