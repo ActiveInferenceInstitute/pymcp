@@ -5,7 +5,8 @@ This package provides client utilities for interacting with the MCP server.
 """
 
 from .config import DEFAULT_CONFIG, get_server_url, load_config, save_config
-from .core import MCPClient
+from .core import ClientError, MCPClient, RemoteError
+from .direct import DirectMCPClient
 from .tools import MCPToolKit
 
 __all__ = [
@@ -17,6 +18,9 @@ __all__ = [
 
     # Core
     'MCPClient',
+    'DirectMCPClient',
+    'ClientError',
+    'RemoteError',
 
     # Tools
     'MCPToolKit'

@@ -10,13 +10,11 @@ and a plain REST API.**
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Active Inference Institute](https://img.shields.io/badge/Active%20Inference-Institute-8A2BE2)](#)
 
-`pymcp` gives any MCP-compatible client (Claude Desktop, Windsurf, …) — or any
-REST caller — direct, reproducible access to PyMDP's discrete-state-space
-active inference engine: build generative models, create agents, infer hidden
-states and policies (free-energy minimization), and simulate agents in
-environments. There are **no mock or simplified implementations**: every call
-goes straight to the real PyMDP library and returns results identical to using
-PyMDP directly.
+`pymcp` exposes an explicit discrete-state filtering/planning contract using
+the real installed PyMDP Agent. One strict registry serves bundled MCP,
+REST and explicit in-process clients. Model admission, successful transition
+commits, bounded histories and measured reporting are wrapper responsibilities;
+this is not complete or automatically equivalent access to every PyMDP API.
 
 ---
 
@@ -36,19 +34,19 @@ PyMDP directly.
 
 ## Status
 
-The core loop works today against the declared `inferactively-pymdp>=1.0.5`
-engine: model construction, state/policy inference, action sampling, gridworld
-simulation, and visualization. Two servers ship — an MCP server (SSE / stdio) and
-a FastAPI REST app — both thin wrappers over the same `PyMDPInterface`.
+The native contract targets the declared `inferactively-pymdp>=1.0.5`,
+locked at 1.0.5. MCP (SSE/stdio), REST and direct clients share an explicit
+registry, not cross-process state. Source qualification exercises native
+models, lifecycle, real transports/processes and renderer/output contracts.
 
-- **Needs the resolved environment:** the test suite and either server require
-  the declared dependencies installed (`uv sync`); a bare interpreter cannot
-  import `pymdp`. See [Testing](#testing).
-- **CI-only check:** the GNN conformance job installs a pinned parser from
-  GitHub and is not runnable offline; see [`TODO.md`](TODO.md) for a known
-  warning-sentinel caveat in it.
-- **Open work:** server consolidation, unbounded resource caps on JSON inputs,
-  and cosmetic lint debt are tracked in [`TODO.md`](TODO.md).
+- Prepared dependencies are required; execution must not implicitly provision
+  a different environment.
+- The bundled MCP implementation is not an official-SDK adoption.
+- Core/protocol/output/frame limits are explicit trusted launch configuration;
+  they are not measured memory or latency guarantees.
+- Full gate, installed-artifact/image and GNN/release proof remain separate.
+  The existing pinned GNN verdict/shared-reader repairs are retained; see
+  [the run guide](docs/RUN_GUIDE.md) and [backlog](TODO.md).
 
 See [`docs/`](docs/README.md) for setup, testing, architecture and the tool
 reference.
@@ -85,20 +83,18 @@ flowchart LR
     F --> E
 ```
 
-**Both servers are thin wrappers around one core class**, `PyMDPInterface`, so
-MCP and REST behave identically — the same tool in, the same JSON out.
+Both servers dispatch through the same strict registry and core contract.
+Transport envelopes differ; each instance owns independent in-memory state.
 
 ---
 
 ## Key features
 
-- **Model Context Protocol** — `@mcp.tool()` tools delivered over **SSE** or
-  **stdio**, auto-discoverable by any MCP client.
-- **REST API** — a FastAPI server (`/ping`, `/tools`, `/agents`,
-  `/environments`, `/sessions`, …) for HTTP callers.
-- **Full active-inference loop** — `create_agent` → `infer_states` →
-  `infer_policies` → `sample_action` → `step_environment`, or end-to-end via
-  `run_simulation`.
+- **Model Context Protocol** — bundled `2025-03-26` JSON-RPC over SSE or stdio,
+  with initialization, notifications, discovery and strict tool schemas.
+- **REST API** — a single-worker FastAPI factory with actual JSON/image bytes.
+- **Active-inference lifecycle** — observe → infer → plan → select →
+  successful token-matched transition/commit, or `run_simulation`.
 - **Grid-world environments** — create spatial environments with rewards and
   simulate navigation.
 - **Visualization** — belief dynamics, policy posteriors, free-energy traces,
@@ -110,20 +106,18 @@ MCP and REST behave identically — the same tool in, the same JSON out.
 
 ## Installation
 
-Using [uv](https://docs.astral.sh/uv/):
+When dependency provisioning is authorized, use the committed frozen lock:
 
 ```bash
-# 1. Install this package (fastapi, uvicorn, numpy, matplotlib, aiohttp, ...)
-uv pip install -e .
-
-# 2. Install the PyMDP engine
-uv pip install inferactively-pymdp
+./run.sh setup
 ```
 
-> PyMDP is already declared as a dependency in `pyproject.toml`
-> (`inferactively-pymdp>=1.0.5`), and step 2 just makes the engine explicit.
-> There is **no vendored `pymdp-clone`** in this repository — the interface talks
-> to the installed PyMDP package through its public API.
+`inferactively-pymdp` is already declared; do not independently upgrade it or
+install the official `mcp` package over this bundled namespace.
+For an existing prepared environment, launch its interpreter directly with
+this checkout's `src` selected. Docker provisions uv 0.13.8 and a frozen,
+no-dev/non-editable environment; source tests do not qualify the image.
+See [setup](docs/setup.md) for exact launch and exposure boundaries.
 
 ---
 
@@ -134,18 +128,15 @@ from mcp.utils import PyMDPInterface
 
 pymdp = PyMDPInterface()
 
-# Build a generative model: 1 observation modality [obs, state], 1 control factor
-model = pymdp.define_generative_model(A_dims=[[2, 3]], B_dims=[[3, 3, 2]])
+# Matching position/reward modalities for the same 3x3 grid.
+agent = pymdp.create_gridworld_agent("agent_1", [3, 3], [[2, 2]])
+environment = pymdp.create_grid_world_env("world_1", [3, 3], [[2, 2]])
+assert "error" not in agent, agent
+assert "error" not in environment, environment
 
-# Create an agent from that model
-pymdp.create_agent("agent_1", model)
-
-# Create a 3x3 grid world with a reward in the bottom-right
-pymdp.create_grid_world_env("world_1", [3, 3], [[2, 2]])
-
-# Simulate the agent for 5 steps
 result = pymdp.run_simulation("agent_1", "world_1", num_steps=5)
-print(result["timesteps"])
+assert "error" not in result, result
+print(result["simulation_id"], result["num_steps"], result["requested_steps"])
 ```
 
 ### The active-inference loop
@@ -168,9 +159,10 @@ sequenceDiagram
     App->>I: sample_action(agent)
     I->>A: sample_action(q_pi)
     A-->>I: action
-    App->>I: step_environment(env, action)
-    I->>E: step(action)
-    E-->>I: observation + reward
+    App->>I: step_environment(env, action, agent_id, action_id)
+    I->>E: validated step(action)
+    E-->>I: next observation + reward
+    I->>I: commit predictive prior exactly once
 ```
 
 ---
@@ -181,19 +173,19 @@ Every MCP tool and HTTP endpoint is a thin wrapper over one of these:
 
 | Method | Description |
 | --- | --- |
-| `create_agent(name, generative_model)` | Create an active inference agent from a model dict (`A`, `B`, optional `C`, `D`). |
-| `define_generative_model(A_dims, B_dims)` | Build random `A`/`B` matrices + default `C`/`D` from dimension lists. |
-| `create_gridworld_agent(name, grid_size, reward_positions, ...)` | Gridworld agent with position + reward observation models. |
-| `create_grid_world_env(name, grid_size, reward_positions)` | Create a grid world environment with rewards. |
-| `infer_states(agent_id, observation, method="FPI")` | Infer hidden-state posterior for an observation (FPI, BP, …). |
-| `infer_policies(agent_id)` | Optimize beliefs over policies via expected free energy. |
-| `sample_action(agent_id)` | Sample an action from the policy posterior. |
-| `step_environment(env_id, action)` | Advance an environment given an action. |
-| `run_simulation(agent_id, env_id, num_steps=10, ...)` | Run a full agent–environment simulation loop. |
-| `reset_environment(env_id)` | Reset an environment to its initial state. |
-| `get_agent(name)` / `get_environment(name)` | Retrieve stored agents/environments as JSON. |
-| `get_all_agents()` / `get_all_environments()` / `get_all_simulations()` | List stored resources. |
-| `get_all_functions()` | List all public methods on the interface. |
+| `create_agent(name, generative_model, normalize=False)` | Admit a native unbatched model and immutable construction settings. |
+| `define_generative_model(A_dims, B_dims, seed=None)` | Build a bounded normalized model. |
+| `create_gridworld_agent(name, grid_size, reward_positions, ...)` | Model matching the grid's position/reward modalities. |
+| `create_grid_world_env(name, grid_size, reward_positions, ...)` | Real grid environment with explicit reset/terminal options. |
+| `infer_states(agent_id, observation, method=None)` | Filter actual integer outcomes; unsupported method changes fail. |
+| `infer_policies(agent_id)` | Retain complete policy posterior and signed EFE conventions. |
+| `sample_action(agent_id)` | Return/cache a pending action and token without advancing the prior. |
+| `step_environment(env_id, action, agent_id, action_id)` | Execute and commit a matching successful transition. |
+| `commit_action(agent_id, action_id)` | Commit a caller-owned successful external transition instead. |
+| `reset_agent(agent_id)` / `reset_environment(env_id)` | Distinct belief/token and physical-state resets. |
+| `run_simulation(agent_id, env_id, num_steps=10, ...)` | Real run ID, requested/executed counts and measured history. |
+| `create_session` / `run_session` / `get_session_history` | Process-local cumulative histories and actual run IDs. |
+| `get_agent` / `get_environment` / `get_all_functions` | Detached native exports and explicit registry discovery. |
 
 Additional helpers include `validate_generative_model`,
 `calculate_free_energy`, `infer_states_from_observation`, and visualization
@@ -204,53 +196,37 @@ methods (`visualize_simulation`, `visualize_belief_dynamics`,
 
 ## Server run modes
 
-There are two independent servers.
+Use an existing prepared interpreter (`PROJECT_PY` is its absolute path)
+from the repository root:
 
-### 1. MCP server (`src/main.py` + `src/mcp/server/fastmcp.py`)
-
-```bash
-TRANSPORT=sse uv run src/main.py      # SSE (default)
-TRANSPORT=stdio uv run src/main.py    # stdio
-```
-
-### 2. FastAPI HTTP server (`src/mcp/server/app.py`)
+### 1. Bundled MCP
 
 ```bash
-uvicorn mcp.server.app:app
+PYTHONPATH="$PWD/src" "$PROJECT_PY" -B src/main.py --transport stdio
+PYTHONPATH="$PWD/src" "$PROJECT_PY" -B src/main.py --transport sse --host 127.0.0.1 --port 8050
 ```
 
-(`scripts/start_fastapi_server.py` is a convenience launcher for this app.)
+### 2. REST
 
-> A third, legacy server script exists: `scripts/start_mcp_server.py`. It
-> predates both servers above, serves its own REST surface, and is kept because
-> the example scripts under `scripts/` call it. It is not the recommended entry
-> point for new integrations; see [`scripts/README.md`](scripts/README.md).
-
-```mermaid
-flowchart TB
-    subgraph MCP["MCP server (SSE / stdio)"]
-        M1["/schema"] --> M2["/tools"]
-        M2 --> M3["/invoke"]
-        M3 --> M4["/sse"]
-    end
-    subgraph REST["FastAPI server"]
-        R1["GET /ping"] --> R2["GET /tools ; POST /tools/{id}"]
-        R2 --> R3["/agents · /environments · /sessions"]
-        R3 --> R4["/ ... /visualize"]
-    end
-    Core["PyMDPInterface"] -. called by all .-> MCP
-    Core -. called by all .-> REST
+```bash
+PYTHONPATH="$PWD/src" "$PROJECT_PY" -B scripts/start_fastapi_server.py --host 127.0.0.1 --port 8080 --output-dir /path/to/owned-output
 ```
 
-### Configuration environment variables
+The direct uvicorn target is `mcp.server.app:create_app --factory --workers 1`,
+with explicit loopback binding and no reload. The eager `:app`, duplicate
+`start_mcp_server.py` and automatic remote-to-direct fallback are retired.
+Import `DirectMCPClient` explicitly from `mcp.client` when local mode is wanted.
 
-| Variable | Default | Description |
-| --- | --- | --- |
-| `HOST` | `0.0.0.0` | Host to bind (SSE server). |
-| `PORT` | `8050` | Port to listen on (SSE server). |
-| `TRANSPORT` | `sse` | Transport: `sse` or `stdio`. |
-| `CORS_ORIGINS` | `http://localhost:8080,http://127.0.0.1:8080` | Allowed origins for the FastAPI server. |
-| `MCP_OUTPUT_DIR` | `./output` | Directory where visualization files are written (path-traversal safe). |
+REST tool bodies contain native `params` objects, not stringified models;
+success has one result envelope, unwrapped once by the client. PNG/SVG routes
+return actual image bytes with matching content type and query format.
+Toolkit downloads are caller-owned local files, not returned server paths.
+
+Instances share a contract, not state. Non-loopback exposure is an explicit
+owner decision; no server authentication exists and CORS is not authentication.
+Client `auth.enabled` controls token headers only. Configuration and bounded
+output/protocol policy are in [setup](docs/setup.md); owned process examples
+are in [scripts/README.md](scripts/README.md).
 
 ---
 
@@ -268,10 +244,10 @@ is no second copy of a test or lint command anywhere. See the
 [`docs/_generated/gate-facts.md`](docs/_generated/gate-facts.md) for the
 generated test counts and per-arm wall times.
 
-The suite exercises `PyMDPInterface` directly **and** through the MCP layer, and
-verifies that the interface reproduces direct PyMDP results exactly. Plots and
-artifacts are written under `tests/output/`. Counts come from
-`scripts/gate_facts.py`, not from prose.
+The [focused contract inventory](tests/README.md) covers real native,
+transport, filesystem, process and renderer paths using isolated temporary
+outputs. A focused receipt is not a full gate, installed-image or scientific
+qualification. Counts come from `scripts/gate_facts.py`, not from prose.
 
 > The suite needs the resolved environment; on a bare interpreter without the
 > declared dependencies `pytest` cannot import the modules and collection fails.

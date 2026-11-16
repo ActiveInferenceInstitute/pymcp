@@ -1,709 +1,187 @@
-"""
-MCP Client Core.
-
-This module provides the main MCP client implementation for interacting with the MCP server.
-"""
-
-import asyncio
+"""Explicit HTTP client: one tool unwrap, real resource bytes, no local fallback."""
+import copy
 import json
-import logging
-from typing import Any, Dict, List, Optional
+from urllib.parse import quote, urlsplit
 
 import aiohttp
 
-from .config import get_server_url, load_config
+from ..utils import NumpyEncoder
+from .config import (
+    DEFAULT_CONFIG,
+    get_server_url,
+    load_config,
+    merge_configs,
+    validate_config,
+)
 
-# Set up logging
-logger = logging.getLogger("mcp.client")
+
+class ClientError(RuntimeError):
+    pass
+
+
+class RemoteError(ClientError):
+    def __init__(self, status, payload):
+        self.status, self.payload = status, payload
+        super().__init__(f"HTTP {status}: {payload}")
+
+
+def _reject_constant(value):
+    raise ValueError("non-JSON numeric constant: " + value)
+
 
 class MCPClient:
-    """MCP client for interacting with the MCP server.
-
-    Parameters
-    ----------
-    server_url : str, optional
-        URL of the MCP server, by default None (use configuration)
-    auth_token : str, optional
-        Authentication token, by default None
-    session : aiohttp.ClientSession, optional
-        HTTP session to use, by default None (create a new session)
-    config : Dict[str, Any], optional
-        Client configuration, by default None (load from file)
-
-    Attributes
-    ----------
-    server_url : str
-        URL of the MCP server
-    session : aiohttp.ClientSession
-        HTTP session for making requests
-    auth_token : str
-        Authentication token for the MCP server
-    config : Dict[str, Any]
-        Client configuration
-    """
-
-    def __init__(
-        self,
-        server_url: Optional[str] = None,
-        auth_token: Optional[str] = None,
-        session: Optional[aiohttp.ClientSession] = None,
-        config: Optional[Dict[str, Any]] = None
-    ):
-        """Initialize the MCP client."""
-        # Load configuration if not provided
-        if config is None:
-            self.config = load_config()
-        else:
-            self.config = config
-
-        # Set server URL
-        if server_url is None:
-            self.server_url = get_server_url(self.config)
-        else:
-            self.server_url = server_url
-
-        # Set authentication token
-        if auth_token is None:
-            auth_config = self.config.get("auth", {})
-            self.auth_token = auth_config.get("token")
-        else:
-            self.auth_token = auth_token
-
-        # Set HTTP session
+    def __init__(self, server_url=None, auth_token=None, session=None, config=None):
+        self.config = load_config() if config is None else validate_config(merge_configs(DEFAULT_CONFIG, config))
+        self.server_url = (server_url if server_url is not None else get_server_url(self.config)).rstrip("/")
+        parsed = urlsplit(self.server_url)
+        if (parsed.scheme not in ("http", "https") or not parsed.hostname or parsed.username
+                or parsed.password or parsed.query or parsed.fragment):
+            raise ValueError("server_url must be an explicit HTTP(S) endpoint without embedded credentials")
+        parsed.port  # Validate a supplied port without contacting the server.
+        self.auth_token = auth_token if auth_token is not None else self.config["auth"]["token"]
+        if self.auth_token is not None and not isinstance(self.auth_token, str):
+            raise ValueError("auth_token must be a string")
         self.session = session
         self._owns_session = session is None
 
-    async def __aenter__(self):
-        """Enter async context manager."""
+    async def _ensure_session(self):
         if self.session is None:
             self.session = aiohttp.ClientSession()
+            self._owns_session = True
+        elif self.session.closed:
+            raise ClientError("the supplied HTTP session is closed")
+
+    async def __aenter__(self):
+        await self._ensure_session()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """Exit async context manager."""
+    async def close(self):
         if self._owns_session and self.session is not None:
             await self.session.close()
             self.session = None
 
-    async def _ensure_session(self):
-        """Ensure that a session is available."""
-        if self.session is None:
-            self.session = aiohttp.ClientSession()
-            self._owns_session = True
+    async def __aexit__(self, *exception):
+        await self.close()
 
-    async def _make_request(
-        self,
-        method: str,
-        endpoint: str,
-        data: Optional[Dict[str, Any]] = None,
-        params: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """Make a request to the MCP server.
+    def _headers(self, supplied=None):
+        headers = {key: value for key, value in dict(supplied or {}).items() if key.lower() != "authorization"}
+        if self.config["auth"]["enabled"] and self.auth_token:
+            headers["Authorization"] = "Bearer " + self.auth_token
+        return headers
 
-        Parameters
-        ----------
-        method : str
-            HTTP method (GET, POST, etc.)
-        endpoint : str
-            API endpoint
-        data : Dict[str, Any], optional
-            Request data, by default None
-        params : Dict[str, Any], optional
-            Query parameters, by default None
-        headers : Dict[str, Any], optional
-            Request headers, by default None
+    @staticmethod
+    async def decode_response(response):
+        chunks, total = [], 0
+        async for chunk in response.content.iter_chunked(65536):
+            total += len(chunk)
+            if total > 32 * 1024 * 1024:
+                raise ClientError("response exceeds the byte budget")
+            chunks.append(chunk)
+        data = b"".join(chunks)
+        kind = response.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+        if response.status >= 400:
+            try:
+                payload = json.loads(data, parse_constant=_reject_constant)
+            except (ValueError, UnicodeError):
+                payload = data.decode("utf-8", errors="replace")
+            raise RemoteError(response.status, payload)
+        if kind == "application/json" or kind.endswith("+json"):
+            try:
+                value = json.loads(data, parse_constant=_reject_constant)
+            except (ValueError, UnicodeError) as error:
+                raise ClientError("invalid JSON response") from error
+            if isinstance(value, dict) and "error" in value:
+                raise RemoteError(response.status, value)
+            return value
+        if kind in ("image/png", "image/svg+xml"):
+            return data
+        raise ClientError("unsupported response Content-Type: " + kind)
 
-        Returns
-        -------
-        Dict[str, Any]
-            Response data
-
-        Raises
-        ------
-        Exception
-            If the request fails or the response is invalid
-        """
+    async def _make_request(self, method, endpoint, data=None, params=None, headers=None):
+        if method == "GET" and data is not None:
+            raise ValueError("GET bodies are unsupported")
         await self._ensure_session()
+        options = {
+            "method": method, "url": self.server_url + endpoint,
+            "params": copy.deepcopy(params), "headers": self._headers(headers),
+            "timeout": aiohttp.ClientTimeout(total=self.config["options"]["timeout"]),
+        }
+        if data is not None:
+            # Convert array-like caller values at the HTTP boundary only.
+            options["json"] = json.loads(json.dumps(data, cls=NumpyEncoder, allow_nan=False))
+        async with self.session.request(**options) as response:
+            return await self.decode_response(response)
 
-        # Create URL
-        url = f"{self.server_url}{endpoint}"
-
-        # Set default headers
-        if headers is None:
-            headers = {}
-
-        # Add authentication if available
-        if self.auth_token:
-            headers["Authorization"] = f"Bearer {self.auth_token}"
-
-        # Set content type
-        if data is not None and "Content-Type" not in headers:
-            headers["Content-Type"] = "application/json"
-
-        # Make request
-        options = self.config.get("options", {})
-        timeout = aiohttp.ClientTimeout(total=options.get("timeout", 30))
-
-        try:
-            async with self.session.request(
-                method=method,
-                url=url,
-                json=data,
-                params=params,
-                headers=headers,
-                timeout=timeout
-            ) as response:
-                # Read response
-                response_text = await response.text()
-
-                # Check for success
-                if response.status >= 400:
-                    error_message = f"HTTP error {response.status}: {response_text}"
-                    logger.error(error_message)
-                    raise Exception(error_message)
-
-                # Parse JSON response
-                try:
-                    return json.loads(response_text)
-                except json.JSONDecodeError:
-                    error_message = f"Invalid JSON response: {response_text}"
-                    logger.error(error_message)
-                    raise Exception(error_message)
-
-        except asyncio.TimeoutError:
-            error_message = f"Request timed out: {url}"
-            logger.error(error_message)
-            raise Exception(error_message)
-
-        except aiohttp.ClientError as e:
-            error_message = f"HTTP client error: {str(e)}"
-            logger.error(error_message)
-            raise Exception(error_message)
-
-    async def ping(self) -> Dict[str, Any]:
-        """Ping the MCP server to check if it's available.
-
-        Returns
-        -------
-        Dict[str, Any]
-            Server status
-        """
+    async def ping(self):
         return await self._make_request("GET", "/ping")
 
-    async def get_tools(self) -> List[Dict[str, Any]]:
-        """Get the list of available tools from the MCP server.
-
-        Returns
-        -------
-        List[Dict[str, Any]]
-            List of available tools
-        """
-        response = await self._make_request("GET", "/tools")
-        return response.get("tools", [])
-
-    async def get_tool(self, tool_id: str) -> Dict[str, Any]:
-        """Get information about a specific tool.
-
-        Parameters
-        ----------
-        tool_id : str
-            Tool ID
-
-        Returns
-        -------
-        Dict[str, Any]
-            Tool information
-        """
-        response = await self._make_request("GET", f"/tools/{tool_id}")
-        return response.get("tool", {})
-
-    async def call_tool(
-        self,
-        tool_id: str,
-        params: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """Call a tool on the MCP server.
-
-        Parameters
-        ----------
-        tool_id : str
-            Tool ID
-        params : Dict[str, Any]
-            Tool parameters
-
-        Returns
-        -------
-        Dict[str, Any]
-            Tool result
-        """
-        data = {"params": params}
-        response = await self._make_request("POST", f"/tools/{tool_id}", data=data)
-        return response.get("result", {})
-
-    async def create_agent(
-        self,
-        name: str,
-        model: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """Create a new agent on the MCP server.
-
-        Parameters
-        ----------
-        name : str
-            Agent name
-        model : Dict[str, Any]
-            Agent model (generative model)
-
-        Returns
-        -------
-        Dict[str, Any]
-            Agent information
-        """
-        data = {
-            "name": name,
-            "model": model
-        }
-        response = await self._make_request("POST", "/agents", data=data)
-        return response.get("agent", {})
-
-    async def get_agents(self) -> List[Dict[str, Any]]:
-        """Get the list of agents from the MCP server.
-
-        Returns
-        -------
-        List[Dict[str, Any]]
-            List of agents
-        """
-        response = await self._make_request("GET", "/agents")
-        return response.get("agents", [])
-
-    async def get_agent(self, agent_id: str) -> Dict[str, Any]:
-        """Get information about a specific agent.
-
-        Parameters
-        ----------
-        agent_id : str
-            Agent ID
-
-        Returns
-        -------
-        Dict[str, Any]
-            Agent information
-        """
-        response = await self._make_request("GET", f"/agents/{agent_id}")
-        return response.get("agent", {})
-
-    async def update_agent(
-        self,
-        agent_id: str,
-        name: Optional[str] = None,
-        model: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """Update an agent on the MCP server.
-
-        Parameters
-        ----------
-        agent_id : str
-            Agent ID
-        name : str, optional
-            Agent name, by default None
-        model : Dict[str, Any], optional
-            Agent model (generative model), by default None
-
-        Returns
-        -------
-        Dict[str, Any]
-            Updated agent information
-        """
-        data = {}
-        if name is not None:
-            data["name"] = name
-        if model is not None:
-            data["model"] = model
-
-        response = await self._make_request("PUT", f"/agents/{agent_id}", data=data)
-        return response.get("agent", {})
-
-    async def delete_agent(self, agent_id: str) -> bool:
-        """Delete an agent from the MCP server.
-
-        Parameters
-        ----------
-        agent_id : str
-            Agent ID
-
-        Returns
-        -------
-        bool
-            True if successful, False otherwise
-        """
-        response = await self._make_request("DELETE", f"/agents/{agent_id}")
-        return response.get("success", False)
-
-    async def create_environment(
-        self,
-        name: str,
-        type: str,
-        params: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """Create a new environment on the MCP server.
-
-        Parameters
-        ----------
-        name : str
-            Environment name
-        type : str
-            Environment type
-        params : Dict[str, Any]
-            Environment parameters
-
-        Returns
-        -------
-        Dict[str, Any]
-            Environment information
-        """
-        data = {
-            "name": name,
-            "type": type,
-            "params": params
-        }
-        response = await self._make_request("POST", "/environments", data=data)
-        return response.get("environment", {})
-
-    async def get_environments(self) -> List[Dict[str, Any]]:
-        """Get the list of environments from the MCP server.
-
-        Returns
-        -------
-        List[Dict[str, Any]]
-            List of environments
-        """
-        response = await self._make_request("GET", "/environments")
-        return response.get("environments", [])
-
-    async def get_environment(self, env_id: str) -> Dict[str, Any]:
-        """Get information about a specific environment.
-
-        Parameters
-        ----------
-        env_id : str
-            Environment ID
-
-        Returns
-        -------
-        Dict[str, Any]
-            Environment information
-        """
-        response = await self._make_request("GET", f"/environments/{env_id}")
-        return response.get("environment", {})
-
-    async def update_environment(
-        self,
-        env_id: str,
-        name: Optional[str] = None,
-        params: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """Update an environment on the MCP server.
-
-        Parameters
-        ----------
-        env_id : str
-            Environment ID
-        name : str, optional
-            Environment name, by default None
-        params : Dict[str, Any], optional
-            Environment parameters, by default None
-
-        Returns
-        -------
-        Dict[str, Any]
-            Updated environment information
-        """
-        data = {}
-        if name is not None:
-            data["name"] = name
-        if params is not None:
-            data["params"] = params
-
-        response = await self._make_request("PUT", f"/environments/{env_id}", data=data)
-        return response.get("environment", {})
-
-    async def delete_environment(self, env_id: str) -> bool:
-        """Delete an environment from the MCP server.
-
-        Parameters
-        ----------
-        env_id : str
-            Environment ID
-
-        Returns
-        -------
-        bool
-            True if successful, False otherwise
-        """
-        response = await self._make_request("DELETE", f"/environments/{env_id}")
-        return response.get("success", False)
-
-    async def create_session(
-        self,
-        agent_id: str,
-        env_id: str,
-        params: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """Create a new session on the MCP server.
-
-        Parameters
-        ----------
-        agent_id : str
-            Agent ID
-        env_id : str
-            Environment ID
-        params : Dict[str, Any], optional
-            Session parameters, by default None
-
-        Returns
-        -------
-        Dict[str, Any]
-            Session information
-        """
-        data = {
-            "agent_id": agent_id,
-            "env_id": env_id
-        }
-        if params is not None:
-            for key, value in params.items():
-                data[key] = value
-
-        response = await self._make_request("POST", "/sessions", data=data)
-        return response
-
-    async def get_sessions(self) -> List[Dict[str, Any]]:
-        """Get the list of sessions from the MCP server.
-
-        Returns
-        -------
-        List[Dict[str, Any]]
-            List of sessions
-        """
-        response = await self._make_request("GET", "/sessions")
-        return response.get("sessions", [])
-
-    async def get_session(self, session_id: str) -> Dict[str, Any]:
-        """Get information about a specific session.
-
-        Parameters
-        ----------
-        session_id : str
-            Session ID
-
-        Returns
-        -------
-        Dict[str, Any]
-            Session information
-        """
-        response = await self._make_request("GET", f"/sessions/{session_id}")
-        return response.get("session", {})
-
-    async def run_session(
-        self,
-        session_id: str,
-        steps: int = 1,
-        params: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """Run a session on the MCP server.
-
-        Parameters
-        ----------
-        session_id : str
-            Session ID
-        steps : int, optional
-            Number of steps to run, by default 1
-        params : Dict[str, Any], optional
-            Run parameters, by default None
-
-        Returns
-        -------
-        Dict[str, Any]
-            Session information after running
-        """
-        data = {"steps": steps}
-        if params is not None:
-            data["params"] = params
-
-        response = await self._make_request("POST", f"/sessions/{session_id}/run", data=data)
-        return response.get("session", {})
-
-    async def reset_session(
-        self,
-        session_id: str,
-        params: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """Reset a session on the MCP server.
-
-        Parameters
-        ----------
-        session_id : str
-            Session ID
-        params : Dict[str, Any], optional
-            Reset parameters, by default None
-
-        Returns
-        -------
-        Dict[str, Any]
-            Session information after reset
-        """
-        data = {}
-        if params is not None:
-            data["params"] = params
-
-        response = await self._make_request("POST", f"/sessions/{session_id}/reset", data=data)
-        return response.get("session", {})
-
-    async def delete_session(self, session_id: str) -> bool:
-        """Delete a session from the MCP server.
-
-        Parameters
-        ----------
-        session_id : str
-            Session ID
-
-        Returns
-        -------
-        bool
-            True if successful, False otherwise
-        """
-        response = await self._make_request("DELETE", f"/sessions/{session_id}")
-        return response.get("success", False)
-
-    async def run_simulation(
-        self,
-        agent_id: str,
-        env_id: str,
-        steps: int,
-        params: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """Run a simulation on the MCP server.
-
-        Parameters
-        ----------
-        agent_id : str
-            Agent ID
-        env_id : str
-            Environment ID
-        steps : int
-            Number of steps to run
-        params : Dict[str, Any], optional
-            Simulation parameters, by default None
-
-        Returns
-        -------
-        Dict[str, Any]
-            Simulation results
-        """
-        # Create a session if it doesn't exist
-        try:
-            session_data = await self.create_session(agent_id, env_id, params)
-        except Exception as e:
-            return {"error": f"Error creating session: {str(e)}"}
-
-        session_id = session_data.get("id")
-
-        if not session_id:
-            # Try to generate a predictable session ID
-            session_id = f"{agent_id}_{env_id}_session"
-
-        # Run the simulation using the tool directly
-        run_params = {
-            "agent_id": agent_id,
-            "env_id": env_id,
-            "steps": steps
-        }
-        if params is not None:
-            for key, value in params.items():
-                if key not in run_params:
-                    run_params[key] = value
-
-        result = await self.call_tool("run_simulation", run_params)
-
-        # If we got a result with a result field, use that
-        if "result" in result:
-            result = result["result"]
-
-        # Add the session ID if it's not present
-        if "id" not in result:
-            result["id"] = session_id
-
+    async def get_tools(self):
+        return (await self._make_request("GET", "/tools"))["tools"]
+
+    async def call_tool(self, tool_id, params):
+        response = await self._make_request("POST", "/tools/" + quote(tool_id, safe=""), {"params": params})
+        if not isinstance(response, dict) or set(response) != {"result"} or not isinstance(response["result"], dict):
+            raise ClientError("invalid canonical tool response envelope")
+        result = response["result"]
+        if "error" in result:
+            raise RemoteError(200, result)
         return result
 
-    async def visualize_agent(
-        self,
-        agent_id: str,
-        format: str = "png",
-        params: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """Visualize an agent on the MCP server.
+    async def create_agent(self, name, generative_model, normalize=False):
+        return await self.call_tool("create_agent", {
+            "name": name, "generative_model": generative_model, "normalize": normalize})
 
-        Parameters
-        ----------
-        agent_id : str
-            Agent ID
-        format : str, optional
-            Visualization format, by default "png"
-        params : Dict[str, Any], optional
-            Visualization parameters, by default None
+    async def get_agents(self):
+        return (await self._make_request("GET", "/agents"))["agents"]
 
-        Returns
-        -------
-        Dict[str, Any]
-            Visualization information
-        """
-        query_params = {"format": format}
-        if params is not None:
-            data = {"params": params}
-        else:
-            data = None
+    async def get_agent(self, agent_id):
+        return await self._make_request("GET", "/agents/" + quote(agent_id, safe=""))
 
-        response = await self._make_request(
-            "GET",
-            f"/agents/{agent_id}/visualize",
-            data=data,
-            params=query_params
-        )
-        return response.get("visualization", {})
+    async def create_environment(self, name, grid_size, reward_positions, *,
+                                  start_position=None, reset_mode="origin", terminate_on_reward=True):
+        return await self._make_request("POST", "/environments", {
+            "name": name, "type": "grid_world", "grid_size": grid_size,
+            "reward_positions": reward_positions, "start_position": start_position,
+            "reset_mode": reset_mode, "terminate_on_reward": terminate_on_reward})
 
-    async def visualize_session(
-        self,
-        session_id: str,
-        format: str = "png",
-        params: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """Visualize a session on the MCP server.
+    async def get_environments(self):
+        return (await self._make_request("GET", "/environments"))["environments"]
 
-        Parameters
-        ----------
-        session_id : str
-            Session ID
-        format : str, optional
-            Visualization format, by default "png"
-        params : Dict[str, Any], optional
-            Visualization parameters, by default None
+    async def get_environment(self, env_id):
+        return await self._make_request("GET", "/environments/" + quote(env_id, safe=""))
 
-        Returns
-        -------
-        Dict[str, Any]
-            Visualization information
-        """
-        query_params = {"format": format}
-        if params is not None:
-            data = {"params": params}
-        else:
-            data = None
+    async def create_session(self, agent_id, env_id, session_id):
+        return await self._make_request("POST", "/sessions", {
+            "agent_id": agent_id, "env_id": env_id, "session_id": session_id})
 
-        response = await self._make_request(
-            "GET",
-            f"/sessions/{session_id}/visualize",
-            data=data,
-            params=query_params
-        )
-        return response.get("visualization", {})
+    async def get_sessions(self):
+        return (await self._make_request("GET", "/sessions"))["sessions"]
+
+    async def run_session(self, session_id, num_steps=10, stop_on_done=False):
+        return await self._make_request("POST", "/sessions/" + quote(session_id, safe="") + "/run",
+                                        {"num_steps": num_steps, "stop_on_done": stop_on_done})
+
+    async def run_simulation(self, agent_id, env_id, num_steps=10, save_history=True, stop_on_done=False):
+        return await self.call_tool("run_simulation", {
+            "agent_id": agent_id, "env_id": env_id, "num_steps": num_steps,
+            "save_history": save_history, "stop_on_done": stop_on_done})
+
+    async def visualize_agent(self, agent_id, format="png"):
+        return await self._make_request("GET", "/agents/" + quote(agent_id, safe="") + "/visualize",
+                                        params={"format": format})
+
+    async def visualize_simulation(self, simulation_id, format="png"):
+        return await self._make_request("GET", "/simulations/" + quote(simulation_id, safe="") + "/visualize",
+                                        params={"format": format})
+
+    async def visualize_session(self, session_id, format="png"):
+        return await self._make_request("GET", "/sessions/" + quote(session_id, safe="") + "/visualize",
+                                        params={"format": format})
+
+    async def analyze_free_energy(self, session_id, format="json"):
+        return await self._make_request("GET", "/analyze/free_energy/" + quote(session_id, safe=""),
+                                        params={"format": format})
+
+    async def plot_belief_dynamics(self, session_id, format="json"):
+        return await self._make_request("GET", "/analyze/beliefs/" + quote(session_id, safe=""),
+                                        params={"format": format})

@@ -1,199 +1,84 @@
-"""
-Belief Dynamics Module for MCP-PyMDP
-
-This module implements functions for analyzing, tracking, and visualizing
-belief dynamics in active inference agents. The functions are used by
-the MCP server tools and can be used directly by client applications.
-"""
-
-import os
-from typing import Dict, List, Optional, Tuple
-
+"""Validated, step-aligned belief readers and production heatmaps."""
 import matplotlib.pyplot as plt
 import numpy as np
 
+from .models import Limits, probability
+from .outputs import OutputPolicy
 
-def extract_belief_history(history: Dict) -> Tuple[List, int, List[int]]:
-    """
-    Extract belief history data from a simulation history.
 
-    Parameters
-    ----------
-    history : Dict
-        The simulation history from PyMDP
+def belief_arrays(beliefs):
+    if not isinstance(beliefs, (list, tuple)) or not beliefs or not beliefs[0]:
+        raise ValueError("belief history is unavailable")
+    limits = Limits()
+    if len(beliefs) > limits.max_steps or len(beliefs[0]) > limits.max_entities:
+        raise ValueError("belief history exceeds the plotting budget")
+    sizes = [len(q) for q in beliefs[0]]
+    if not all(sizes) or len(beliefs) * sum(sizes) > limits.max_elements:
+        raise ValueError("belief history exceeds the element budget")
+    for sample in beliefs:
+        if len(sample) != len(sizes):
+            raise ValueError("belief factor count changes across timesteps")
+        for q, size in zip(sample, sizes):
+            values = np.asarray(q, dtype=float)
+            if values.shape != (size,) or not np.all(np.isfinite(values)):
+                raise ValueError("malformed belief history")
+            probability(values)
+    return [np.asarray([sample[f] for sample in beliefs], dtype=float) for f in range(len(sizes))]
 
-    Returns
-    -------
-    Tuple[List, int, List[int]]
-        A tuple containing (beliefs, num_timesteps, num_states_per_factor)
-    """
-    # Extract data from history
-    timesteps = history.get('timesteps', [])
+
+def extract_belief_history(history):
+    timesteps = history["timesteps"]
     if not timesteps:
         return [], 0, []
-
-    # Extract belief history
-    beliefs = [ts.get('beliefs', []) for ts in timesteps]
-    if not beliefs or not beliefs[0]:
-        return [], 0, []
-
-    num_factors = len(beliefs[0])
-    num_timesteps = len(beliefs)
-
-    # Determine number of states for each factor
-    num_states_per_factor = []
-    for f in range(num_factors):
-        if len(beliefs[0]) > f:
-            num_states_per_factor.append(len(beliefs[0][f]))
-        else:
-            num_states_per_factor.append(0)
-
-    return beliefs, num_timesteps, num_states_per_factor
+    beliefs = [step["beliefs"] for step in timesteps]
+    arrays = belief_arrays(beliefs)
+    return beliefs, len(beliefs), [values.shape[1] for values in arrays]
 
 
-def create_belief_dynamics_visualization(
-    history: Dict,
-    output_file: str,
-    title: str = "Belief Dynamics Over Time",
-    show_state_labels: bool = True,
-    custom_state_labels: Optional[List[List[str]]] = None
-) -> str:
-    """
-    Create a visualization of belief dynamics throughout a simulation
-
-    Parameters
-    ----------
-    history : Dict
-        The simulation history from PyMDP
-    output_file : str
-        The path to save the visualization
-    title : str, optional
-        The title for the visualization, by default "Belief Dynamics Over Time"
-    show_state_labels : bool, optional
-        Whether to show state labels on the y-axis, by default True
-    custom_state_labels : Optional[List[List[str]]], optional
-        Custom labels for states, organized by factor, by default None
-
-    Returns
-    -------
-    str
-        The path to the saved visualization, or None if creation failed
-    """
-    beliefs, num_timesteps, num_states_per_factor = extract_belief_history(history)
-
-    if not beliefs or num_timesteps == 0:
-        return None
-
-    num_factors = len(beliefs[0])
-
-    # Create a figure
-    fig = plt.figure(figsize=(15, 5 * num_factors))
-    fig.suptitle(title, fontsize=24)
-
-    # Create subplots for each state factor
-    for f in range(num_factors):
-        ax = fig.add_subplot(num_factors, 1, f+1)
-
-        # Extract belief arrays for this factor
-        factor_beliefs = np.array([b[f] for b in beliefs if len(b) > f])
-
-        # Only proceed if we have valid data
-        if factor_beliefs.size == 0 or len(factor_beliefs.shape) < 2:
-            continue
-
-        num_states = factor_beliefs.shape[1]
-
-        # Create heatmap of beliefs over time
-        im = ax.imshow(factor_beliefs.T, aspect='auto', cmap='viridis',
-                      extent=[0, num_timesteps-1, -0.5, num_states-0.5])
-
-        plt.colorbar(im, ax=ax, label="Belief Probability")
-
-        # Add labels
-        ax.set_title(f"Factor {f} Belief Dynamics", fontsize=18)
-        ax.set_xlabel("Timestep", fontsize=14)
-        ax.set_ylabel("State", fontsize=14)
-
-        # Add state labels if not too many and enabled
-        if show_state_labels and num_states <= 20:
-            ax.set_yticks(range(num_states))
-
-            # Use custom labels if provided, otherwise use default
-            if custom_state_labels and f < len(custom_state_labels) and custom_state_labels[f]:
-                labels = custom_state_labels[f][:num_states]  # Ensure we don't have more labels than states
-                ax.set_yticklabels(labels)
-            else:
-                ax.set_yticklabels([f"State {s}" for s in range(num_states)])
-
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
-
-    # Ensure directory exists
-    os.makedirs(os.path.dirname(os.path.abspath(output_file)), exist_ok=True)
-
-    # Save the figure
-    plt.savefig(output_file, dpi=100)
-    plt.close(fig)
-
-    return output_file
+def create_belief_dynamics_visualization(history, output_file,
+                                        title="Belief Dynamics Over Time",
+                                        show_state_labels=True, custom_state_labels=None, *, policy=None):
+    beliefs, count, sizes = extract_belief_history(history)
+    arrays = belief_arrays(beliefs)
+    if type(show_state_labels) is not bool:
+        raise ValueError("show_state_labels must be boolean")
+    if custom_state_labels is not None:
+        if len(custom_state_labels) != len(sizes) or any(len(labels) != n for labels, n in zip(custom_state_labels, sizes)):
+            raise ValueError("custom labels must identify every factor/state exactly")
+    authority = policy or OutputPolicy()
+    target = authority.path(output_file)
+    fig, axes = plt.subplots(len(arrays), 1, figsize=(10, 3 * len(arrays)), squeeze=False)
+    try:
+        for factor, values in enumerate(arrays):
+            ax = axes[factor, 0]
+            im = ax.imshow(values.T, origin="lower", aspect="auto", vmin=0, vmax=1,
+                           extent=[-0.5, count - 0.5, -0.5, sizes[factor] - 0.5])
+            fig.colorbar(im, ax=ax, label="Belief probability")
+            ax.set(title=f"Factor {factor}", xlabel="Stored transition index", ylabel="State")
+            if show_state_labels and sizes[factor] <= 20:
+                ax.set_yticks(range(sizes[factor]))
+                if custom_state_labels is not None:
+                    ax.set_yticklabels(custom_state_labels[factor])
+        fig.suptitle(title)
+        fig.tight_layout()
+        return authority.save_figure(fig, target, dpi=100)
+    finally:
+        plt.close(fig)
 
 
-def calculate_belief_statistics(beliefs: List) -> Dict:
-    """
-    Calculate statistics about belief dynamics
-
-    Parameters
-    ----------
-    beliefs : List
-        List of belief states across timesteps
-
-    Returns
-    -------
-    Dict
-        Dictionary containing statistics about belief dynamics
-    """
-    if not beliefs or not beliefs[0]:
-        return {"error": "No belief data available"}
-
-    num_factors = len(beliefs[0])
-    num_timesteps = len(beliefs)
-
-    stats = {
-        "num_factors": num_factors,
-        "num_timesteps": num_timesteps,
-        "factors": []
-    }
-
-    for f in range(num_factors):
-        # Extract belief arrays for this factor
-        factor_beliefs = np.array([b[f] for b in beliefs if len(b) > f])
-
-        # Skip if no valid data
-        if factor_beliefs.size == 0 or len(factor_beliefs.shape) < 2:
-            stats["factors"].append({"error": f"No valid data for factor {f}"})
-            continue
-
-        num_states = factor_beliefs.shape[1]
-
-        # Calculate entropy over time
-        entropy = -np.sum(factor_beliefs * np.log(factor_beliefs + 1e-10), axis=1)
-
-        # Calculate state with maximum belief at each timestep
-        max_belief_states = np.argmax(factor_beliefs, axis=1)
-
-        # Calculate belief volatility (how often the most likely state changes)
-        state_changes = np.sum(np.diff(max_belief_states) != 0)
-
-        factor_stats = {
-            "num_states": num_states,
-            "mean_entropy": float(np.mean(entropy)),
-            "max_entropy": float(np.max(entropy)),
-            "min_entropy": float(np.min(entropy)),
-            "entropy_over_time": entropy.tolist(),
-            "max_belief_states": max_belief_states.tolist(),
-            "state_changes": int(state_changes),
-            "state_change_rate": float(state_changes) / (num_timesteps - 1) if num_timesteps > 1 else 0
-        }
-
-        stats["factors"].append(factor_stats)
-
-    return stats
+def calculate_belief_statistics(beliefs):
+    arrays = belief_arrays(beliefs)
+    result = {"num_factors": len(arrays), "num_steps": len(beliefs), "factors": []}
+    for values in arrays:
+        logs = np.zeros_like(values)
+        np.log(values, out=logs, where=values > 0)
+        entropy = -(values * logs).sum(axis=1)
+        states = values.argmax(axis=1)
+        changes = int(np.count_nonzero(np.diff(states)))
+        result["factors"].append({
+            "num_states": values.shape[1], "mean_entropy": float(entropy.mean()),
+            "max_entropy": float(entropy.max()), "min_entropy": float(entropy.min()),
+            "entropy_over_time": entropy.tolist(), "max_belief_states": states.tolist(),
+            "state_changes": changes, "state_change_rate": changes / (len(values) - 1) if len(values) > 1 else 0,
+        })
+    return result

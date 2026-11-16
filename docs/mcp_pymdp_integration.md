@@ -10,48 +10,43 @@ It lets MCP-compatible clients (Claude Desktop, Windsurf, custom agents) and
 plain HTTP callers create active inference agents, define generative models, run
 inference, sample actions, and simulate environments.
 
-The project is a thin wrapper: it routes every call to the **unmodified PyMDP
-library** through a single `PyMDPInterface` class, so results match using PyMDP
-directly. There is no mocked or simplified re-implementation of the algorithms.
+The project uses the real installed PyMDP Agent for its admitted filtering and
+planning subset. Model admission, environment ownership, transition commits,
+transport schemas and measured reporting are explicit wrapper contracts; this
+is not a promise to expose every upstream capability unchanged.
 
 ## Architecture
 
 The integration has four layers:
 
-1. **MCP server** — `src/main.py` declares MCP tools on the bundled FastMCP
-   implementation (`src/mcp/server/fastmcp.py`), served over SSE or stdio.
-2. **FastAPI HTTP server** — `src/mcp/server/app.py` exposes the same interface
-   as a REST API (`/ping`, `/tools`, `/agents`, `/environments`, `/sessions`).
-3. **PyMDP interface** — `PyMDPInterface` in `src/mcp/utils.py` is the bridge
-   between the servers and PyMDP. It holds in-memory registries of agents,
-   environments, and simulation/session history, and converts JSON ⇄ PyMDP's
-   NumPy object arrays.
-4. **PyMDP (dependency)** — the live library from the pip package
-   `inferactively-pymdp` (`pymdp.agent.Agent`, `pymdp.envs.Env`, `pymdp.utils`,
-   `pymdp.maths`).
+1. **MCP server** — `src/main.py` starts the bundled JSON-RPC
+   implementation (`src/mcp/server/fastmcp.py`) over SSE or stdio.
+2. **FastAPI HTTP server** — `src/mcp/server/app.py:create_app` constructs
+   an independent REST instance.
+3. **Registry and core** — `mcp.api.ToolRegistry` exposes explicit strict
+   schemas and dispatches to `PyMDPInterface` in `src/mcp/utils.py`.
+   The core owns native agents, environment objects, priors, pending actions,
+   bounded histories and logs.
+4. **PyMDP dependency** — the installed `inferactively-pymdp` Agent receives
+   batched arrays internally; public model interchange remains unbatched.
 
 ## Data flow
 
-1. A client calls a tool — over MCP (SSE/stdio) or an HTTP endpoint.
-2. The server looks up the corresponding `PyMDPInterface` method.
-3. `PyMDPInterface` calls the PyMDP API for the requested operation.
-4. Numeric results (NumPy arrays/object arrays) are serialized to plain JSON via
-   `NumpyEncoder` and `_convert_from_obj_array`.
-5. The JSON response is returned to the client; visualizations/logs are written
-   to files as requested.
+1. A client invokes a discovered tool with a native JSON argument object.
+2. The registry admits its explicit schema and dispatches under its lock.
+3. The core validates model, support, lifecycle and resource constraints.
+4. Real PyMDP inference/planning or the requested environment/measurement
+   operation produces a native result.
+5. MCP encodes JSON-RPC tool content; REST returns one result envelope.
+   Images use actual PNG/SVG bytes, not server paths masquerading as downloads.
 
 ## Core capabilities
 
-- **Agent creation and model definition** — `create_agent`,
-  `define_generative_model`, `create_gridworld_agent`.
-- **Environment creation and stepping** — `create_grid_world_env`,
-  `step_environment`, `reset_environment`.
-- **Inference and action selection** — `infer_states`, `infer_policies`,
-  `sample_action`.
-- **Simulation** — `run_simulation` (full perception–action loop).
-- **Introspection** — `get_agent`, `get_environment`, `get_all_functions`.
-- **Analysis & visualization** — free-energy calculation, belief-dynamics and
-  free-energy plots, session-based history.
+The [tool reference](mcp_tools.md) owns the complete registry, model interchange,
+observation → inference → selection → successful transition/commit lifecycle,
+reset policies, measured VFE/EFE conventions and bounded retention contract.
+The [setup guide](setup.md) distinguishes bundled MCP, REST and explicit
+in-process clients. Instances share a contract, not cross-process state.
 
 See [mcp_tools.md](mcp_tools.md) for the full reference.
 

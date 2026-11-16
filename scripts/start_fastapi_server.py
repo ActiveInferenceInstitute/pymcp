@@ -1,46 +1,27 @@
 #!/usr/bin/env python3
-"""
-Script to start the FastAPI server for MCP-PyMDP.
-
-This script initializes and runs the FastAPI application defined in src/mcp/server/app.py.
-"""
-
+"""Canonical single-process REST launcher; loopback unless explicitly configured."""
+import argparse
 import os
 import sys
 from pathlib import Path
 
-import uvicorn
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-# Ensure the project root and PyMDP clone are in the Python path
-project_root = Path(__file__).parent.parent
-sys.path.append(str(project_root))
 
-# Modify Python module path to include src
-src_path = project_root / "src"
-if src_path not in sys.path:
-    sys.path.insert(0, str(src_path))
+def main(argv=None):
+    import uvicorn
 
-# Try to import directly
-try:
     from mcp.server.app import create_app
-    print("Successfully imported create_app from mcp.server.app")
-except ImportError as e:
-    print(f"Error importing create_app: {e}")
-    sys.exit(1)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--host", default=os.environ.get("HOST", "127.0.0.1"))
+    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8080")))
+    parser.add_argument("--output-dir", default=os.environ.get("MCP_OUTPUT_DIR", "output"))
+    options = parser.parse_args(argv)
+    if not 1 <= options.port <= 65535:
+        parser.error("port is outside 1..65535")
+    app = create_app(output_root=options.output_dir)
+    uvicorn.run(app, host=options.host, port=options.port, workers=1, reload=False)
 
-def main():
-    """Run the FastAPI server."""
-    # Create the FastAPI app
-    app = create_app()
-
-    # Get host and port from environment variables or use defaults
-    host = os.getenv("HOST", "0.0.0.0")
-    port = int(os.getenv("PORT", "8080"))
-
-    print(f"Starting MCP-PyMDP FastAPI server on {host}:{port}")
-
-    # Run the server
-    uvicorn.run(app, host=host, port=port)
 
 if __name__ == "__main__":
     main()

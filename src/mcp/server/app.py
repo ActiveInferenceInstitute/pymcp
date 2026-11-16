@@ -1,667 +1,219 @@
-"""
-MCP Server FastAPI Application.
-
-This module provides a FastAPI application for the MCP server.
-"""
-
+"""Single-process REST adapter over the explicit production tool contract."""
 import json
 import logging
 import os
-import time
-import traceback
+import uuid
 
-import uvicorn
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException
 
-# Import PyMDP interface using absolute import instead of relative
-from mcp.utils import PyMDPInterface
+from ..api import InvalidArguments, ToolRegistry, UnknownTool
+from ..outputs import OutputPolicy
+from ..utils import PyMDPInterface
 
-# Import visualization extension module to add methods to PyMDPInterface
 
-# Create a global instance of the PyMDP interface
-pymdp_interface = PyMDPInterface()
+def create_app(interface=None, output_root=None, instance_id=None):
+    root = output_root if output_root is not None else os.environ.get("MCP_OUTPUT_DIR", "output")
+    if interface is None:
+        limits = json.loads(os.environ["MCP_LIMITS"]) if "MCP_LIMITS" in os.environ else None
+        interface = PyMDPInterface(limits=limits, output_root=root)
+    else:
+        interface.output_policy = OutputPolicy(root)
+    registry = ToolRegistry(interface)
+    app = FastAPI(title="PyMDP REST tools", version="1.0.3")
+    app.state.interface, app.state.registry = interface, registry
+    app.state.instance_id = instance_id if instance_id is not None else os.environ.get("MCP_INSTANCE_ID")
+    origins = [v.strip() for v in os.environ.get(
+        "CORS_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080").split(",") if v.strip()]
+    # Browser CORS configuration is not authentication.
+    app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=False,
+                       allow_methods=["GET", "POST"], allow_headers=["Content-Type", "Authorization"])
 
-logger = logging.getLogger("mcp.server")
+    @app.exception_handler(HTTPException)
+    async def http_error(request, error):
+        detail = error.detail if isinstance(error.detail, dict) else {"code": "http_error", "message": str(error.detail)}
+        return JSONResponse({"error": detail}, status_code=error.status_code, headers=error.headers)
 
-def create_app():
-    """Create the FastAPI application for the MCP server.
+    @app.exception_handler(Exception)
+    async def unexpected_error(request, error):
+        logging.getLogger(__name__).error("Unhandled HTTP request failure",
+                                         exc_info=(type(error), error, error.__traceback__))
+        return JSONResponse({"error": {"code": "internal_error", "message": "internal server error"}},
+                            status_code=500)
 
-    Returns
-    -------
-    FastAPI
-        FastAPI application
-    """
-    # Create FastAPI app
-    app = FastAPI(
-        title="MCP-PyMDP Server",
-        description="Message-based Cognitive Protocol for Active Inference with PyMDP",
-        version="0.1.0"
-    )
+    async def body(request):
+        chunks, size = [], 0
+        async for chunk in request.stream():
+            size += len(chunk)
+            if size > 1024 * 1024:
+                raise HTTPException(413, "request exceeds byte budget")
+            chunks.append(chunk)
+        try:
+            def invalid_constant(value):
+                raise ValueError(value)
+            value = json.loads(b"".join(chunks), parse_constant=invalid_constant)
+        except (ValueError, UnicodeError):
+            raise HTTPException(400, "invalid JSON") from None
+        if not isinstance(value, dict):
+            raise HTTPException(422, "request body must be an object")
+        return value
 
-    # Add CORS middleware. Origins are env-configurable (CORS_ORIGINS is a
-    # comma-separated list); the default permits only local development origins.
-    # Wildcard origins are NOT combined with credentials.
-    cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080")
-    origins = [o.strip() for o in cors_origins.split(",") if o.strip()]
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=origins,
-        allow_credentials=False,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    def domain(result):
+        if isinstance(result, dict) and "error" in result:
+            code = result.get("error_code", "operation_failed")
+            status = {"not_found": 404, "invalid_argument": 422, "conflict": 409, "gone": 410}.get(code, 500)
+            raise HTTPException(status, {"code": code, "message": result["error"]})
+        return result
 
-    # Add ping endpoint
+    def invoke(name, arguments):
+        try:
+            result = registry.call(name, arguments)
+        except UnknownTool:
+            raise HTTPException(404, {"code": "unknown_tool", "message": name}) from None
+        except InvalidArguments as error:
+            raise HTTPException(422, {"code": "invalid_argument", "message": str(error)}) from None
+        return domain(result)
+
+    def output_format(request, format):
+        if set(request.query_params) - {"format"}:
+            raise HTTPException(422, "unsupported query option")
+        if request.headers.get("content-length", "0") != "0":
+            raise HTTPException(422, "GET bodies are not supported")
+        if format not in ("json", "png", "svg"):
+            raise HTTPException(422, "format must be json, png or svg")
+        return format
+
+    def image(result, format):
+        result = domain(result)
+        try:
+            data = interface.output_policy.read(result["figure_path"])
+        except FileNotFoundError:
+            raise HTTPException(404, "generated image is unavailable") from None
+        return Response(data, media_type="image/png" if format == "png" else "image/svg+xml")
+
     @app.get("/ping")
     async def ping():
-        return {"status": "ok", "message": "MCP-PyMDP server is running"}
+        return {"status": "ok", "instance_id": app.state.instance_id, "pid": os.getpid()}
 
-    # Add tools endpoint
     @app.get("/tools")
-    async def get_tools():
-        tools = [
-            {"id": "create_agent", "name": "Create Agent", "description": "Create a custom agent from a generative model"},
-            {"id": "create_gridworld_agent", "name": "Create Gridworld Agent", "description": "Create an agent for a grid world environment"},
-            {"id": "create_environment", "name": "Create Environment", "description": "Create a simulation environment"},
-            {"id": "infer_states", "name": "Infer States", "description": "Perform state inference for an agent"},
-            {"id": "run_simulation", "name": "Run Simulation", "description": "Run a simulation with an agent in an environment"}
-        ]
-        return {"tools": tools}
+    async def tools():
+        return {"tools": registry.descriptors()}
 
-    # Add tool invocation endpoints
     @app.post("/tools/{tool_id}")
-    async def invoke_tool(tool_id: str, request: Request):
-        # Parse request data
-        data = await request.json()
-        params = data.get("params", {})
+    async def call_tool(tool_id: str, request: Request):
+        value = await body(request)
+        if set(value) != {"params"}:
+            raise HTTPException(422, "tool request requires exactly one params object")
+        return {"result": invoke(tool_id, value["params"])}
 
-        # Handle different tools
-        if tool_id == "create_gridworld_agent":
-            name = params.get("name", "GridWorldAgent")
-            grid_size = params.get("grid_size", [3, 3])
-            reward_positions = params.get("reward_positions", [[2, 2]])
-
-            # Create grid world agent using PyMDP interface
-            height, width = grid_size
-            result = pymdp_interface.create_grid_world_env(name, [height, width], reward_positions)
-
-            # Create an agent with appropriate parameters for this environment
-            agent_name = f"{name}_Agent"
-
-            # The grid size determines the state factor dimensions
-
-            # A simple grid world agent has two observation modalities:
-            # 1. Position observation (height*width possibilities)
-            # 2. Reward observation (2 possibilities: reward or no reward)
-            A_dims = [[height*width, height*width], [2, height*width]]
-
-            # One state factor with 4 possible actions (up, down, left, right)
-            B_dims = [[height*width, height*width, 4]]
-
-            # Generate the generative model
-            model_result = pymdp_interface.define_generative_model(A_dims, B_dims)
-
-            if "error" in model_result:
-                return {"result": {"error": model_result["error"]}}
-
-            # Create the agent
-            agent_result = pymdp_interface.create_agent(agent_name, model_result)
-
-            if "error" in agent_result:
-                return {"result": {"error": agent_result["error"]}}
-
-            # Return the agent information with ID explicitly set to match name
-            agent_result["id"] = agent_name
-            agent_result["env_created"] = result
-
-            return {"result": {"agent": agent_result}}
-
-        elif tool_id == "create_agent":
-            name = params.get("name")
-            model = params.get("model", {})
-
-            # Create agent using PyMDP interface
-            result = pymdp_interface.create_agent(name, model)
-
-            # Make sure the ID is set to the agent's name
-            if "error" not in result:
-                result["id"] = name
-
-            return {"result": {"agent": result}}
-
-        elif tool_id == "create_environment":
-            name = params.get("name")
-            type = params.get("type", "grid_world")
-            grid_size = params.get("grid_size", [3, 3])
-            reward_locations = params.get("reward_locations", [[2, 2]])
-
-            # Create the environment
-            result = pymdp_interface.create_grid_world_env(name, grid_size, reward_locations)
-
-            # Make sure the ID is set
-            if "error" not in result:
-                result["id"] = name
-                result["name"] = name
-                result["type"] = type
-
-            return {"result": result}
-
-        elif tool_id == "infer_states":
-            agent_name = params.get("agent_name")
-            observation = params.get("observation", [0])
-            method = params.get("method", "FPI")
-
-            result = pymdp_interface.infer_states(agent_name, observation, method)
-
-            return {"result": result}
-
-        elif tool_id == "infer_policies":
-            agent_name = params.get("agent_name")
-
-            result = pymdp_interface.infer_policies(agent_name)
-
-            return {"result": result}
-
-        elif tool_id == "sample_action":
-            agent_name = params.get("agent_name")
-
-            result = pymdp_interface.sample_action(agent_name)
-
-            return {"result": result}
-
-        elif tool_id == "run_simulation":
-            agent_id = params.get("agent_id")
-            env_id = params.get("env_id")
-            steps = params.get("steps", 10)
-
-            # Check if the agent and environment exist
-            agent_result = pymdp_interface.get_agent(agent_id)
-            if "error" in agent_result:
-                return {"result": {"error": f"Agent '{agent_id}' not found"}}
-
-            env_result = pymdp_interface.get_environment(env_id)
-            if "error" in env_result:
-                return {"result": {"error": f"Environment '{env_id}' not found"}}
-
-            # Create a session if one doesn't exist
-            session_id = f"{agent_id}_{env_id}_session"
-
-            if not hasattr(pymdp_interface, "sessions"):
-                pymdp_interface.sessions = {}
-
-            if session_id not in pymdp_interface.sessions:
-                session = {
-                    "id": session_id,
-                    "agent": agent_id,
-                    "environment": env_id,
-                    "history": {
-                        "timesteps": []
-                    }
-                }
-                pymdp_interface.sessions[session_id] = session
-
-            # Now run the simulation
-            result = pymdp_interface.run_simulation(agent_id, env_id, steps)
-
-            # Ensure the simulation has an ID
-            if "error" not in result:
-                result["id"] = session_id
-
-            return {"result": result}
-
-        elif tool_id == "step_environment":
-            env_name = params.get("env_name")
-            action = params.get("action", [0])
-
-            result = pymdp_interface.step_environment(env_name, action)
-
-            return {"result": result}
-
-        elif tool_id == "visualize_simulation":
-            simulation_id = params.get("simulation_id")
-            requested_file = params.get("output_file", "simulation.png")
-
-            # Confine writes to a fixed output directory to prevent path
-            # traversal via a user-supplied absolute/`..` output_file.
-            output_base = os.getenv("MCP_OUTPUT_DIR", os.path.join(os.getcwd(), "output"))
-            os.makedirs(output_base, exist_ok=True)
-            output_file = os.path.join(output_base, os.path.basename(requested_file))
-
-            result = pymdp_interface.visualize_simulation(simulation_id, output_file)
-
-            return {"result": result}
-
-        else:
-            # Check if the tool is available in the PyMDP interface
-            available_functions = pymdp_interface.get_all_functions()
-            if tool_id in available_functions.get("functions", []):
-                # Call the method dynamically
-                method = getattr(pymdp_interface, tool_id, None)
-                if method:
-                    try:
-                        result = method(**params)
-                        return {"result": result}
-                    except Exception as e:
-                        return {"result": {"error": f"Error calling {tool_id}: {str(e)}"}}
-
-            # Unknown tool
-            raise HTTPException(status_code=404, detail=f"Tool {tool_id} not found")
-
-    # Add endpoints for environment management
     @app.post("/environments")
     async def create_environment(request: Request):
-        data = await request.json()
-        name = data.get("name")
-
-        # Default to grid_world environment type
-        type = data.get("type", "grid_world")
-
-        # Get specific parameters from the request body
-        grid_size = data.get("grid_size", [3, 3])
-        reward_locations = data.get("reward_locations", [[2, 2]])
-
-        # For backward compatibility, also check in params
-        params = data.get("params", {})
-        if not grid_size and "grid_size" in params:
-            grid_size = params["grid_size"]
-        if not reward_locations and "reward_locations" in params:
-            reward_locations = params["reward_locations"]
-
-        # Create the environment
-        if type == "grid_world":
-            result = pymdp_interface.create_grid_world_env(name, grid_size, reward_locations)
-        else:
-            return {"error": f"Environment type {type} not supported"}
-
-        # Make sure the ID is set
-        if "error" not in result:
-            result["id"] = name
-            result["name"] = name
-            result["type"] = type
-
-        return result
+        value = await body(request)
+        if value.pop("type", "grid_world") != "grid_world":
+            raise HTTPException(422, "HTTP environment creation supports grid_world only")
+        return invoke("create_grid_world_env", value)
 
     @app.get("/environments")
-    async def get_environments():
-        result = pymdp_interface.get_all_environments()
-        return {"environments": result.get("environments", [])}
+    async def environments():
+        return invoke("get_all_environments", {})
 
     @app.get("/environments/{env_id}")
-    async def get_environment(env_id: str):
-        result = pymdp_interface.get_environment(env_id)
-        if "error" in result:
-            raise HTTPException(status_code=404, detail=result["error"])
+    async def environment(env_id: str):
+        return invoke("get_environment", {"env_id": env_id})
 
-        return result
-
-    # Add endpoints for agent management
     @app.get("/agents")
-    async def get_agents():
-        result = pymdp_interface.get_all_agents()
-        return {"agents": result.get("agents", [])}
+    async def agents():
+        return invoke("get_all_agents", {})
 
     @app.get("/agents/{agent_id}")
-    async def get_agent(agent_id: str):
-        result = pymdp_interface.get_agent(agent_id)
-        if "error" in result:
-            raise HTTPException(status_code=404, detail=result["error"])
+    async def agent(agent_id: str):
+        return invoke("get_agent", {"agent_id": agent_id})
 
-        return result
-
-    # Add endpoints for simulation management
     @app.get("/simulations")
-    async def get_simulations():
-        result = pymdp_interface.get_all_simulations()
-        return {"simulations": result.get("simulations", [])}
+    async def simulations():
+        return invoke("get_all_simulations", {})
 
     @app.post("/sessions")
     async def create_session(request: Request):
-        """Create a new simulation session.
-
-        A session connects an agent with an environment for simulation.
-
-        Returns:
-            Session information
-        """
-        try:
-            # Parse request data
-            data = await request.json()
-            agent_id = data.get("agent_id")
-            env_id = data.get("env_id")
-
-            if not agent_id or not env_id:
-                return Response(
-                    content=json.dumps({"error": "Missing required parameters: agent_id and env_id"}),
-                    media_type="application/json",
-                    status_code=400
-                )
-
-            # Generate session ID if not provided
-            session_id = data.get("session_id", f"{agent_id}_{env_id}_session")
-
-            # Check agent exists
-            agent_result = pymdp_interface.get_agent(agent_id)
-            if "error" in agent_result:
-                return Response(
-                    content=json.dumps({"error": f"Agent '{agent_id}' not found"}),
-                    media_type="application/json",
-                    status_code=404
-                )
-
-            # Check environment exists
-            env_result = pymdp_interface.get_environment(env_id)
-
-            # Handle case when environment is not a dict (GridWorldEnv object)
-            if isinstance(env_result, dict) and "error" in env_result:
-                return Response(
-                    content=json.dumps({"error": f"Environment '{env_id}' not found"}),
-                    media_type="application/json",
-                    status_code=404
-                )
-
-            # Create sessions dictionary if it doesn't exist
-            if not hasattr(pymdp_interface, "sessions"):
-                pymdp_interface.sessions = {}
-
-            # Create or update session
-            session = {
-                "id": session_id,
-                "agent": agent_id,
-                "environment": env_id,
-                "created_at": time.time(),
-                "history": {
-                    "timesteps": []
-                }
-            }
-
-            pymdp_interface.sessions[session_id] = session
-
-            return {"session": session}
-        except Exception as e:
-            logger.error(f"Error creating session: {str(e)}")
-            logger.error(traceback.format_exc())
-            return {"error": f"Error creating session: {str(e)}"}
+        value = await body(request)
+        return invoke("create_session", value)
 
     @app.post("/sessions/{session_id}/run")
     async def run_session(session_id: str, request: Request):
-        """Run a simulation session for a specified number of steps.
+        value = await body(request)
+        if "session_id" in value:
+            raise HTTPException(422, "session identity belongs in the route")
+        return invoke("run_session", {"session_id": session_id, **value})
 
-        Args:
-            session_id: ID of the session to run
-            request: Request with simulation parameters
+    @app.get("/sessions")
+    async def sessions():
+        return invoke("get_all_sessions", {})
 
-        Returns:
-            Simulation results
-        """
-        try:
-            # Check if sessions storage exists
-            if not hasattr(pymdp_interface, "sessions"):
-                pymdp_interface.sessions = {}
-
-            # Check if session exists
-            if session_id not in pymdp_interface.sessions:
-                raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
-
-            # Get session data
-            session = pymdp_interface.sessions[session_id]
-            agent_id = session.get("agent")
-            env_id = session.get("environment")
-
-            if not agent_id or not env_id:
-                raise HTTPException(status_code=400, detail="Session is missing agent or environment")
-
-            # Parse request data
-            data = await request.json()
-            steps = data.get("steps", 1)
-
-            # Run simulation
-            result = pymdp_interface.run_simulation(agent_id, env_id, steps)
-
-            # Check for errors
-            if "error" in result:
-                raise HTTPException(status_code=500, detail=result["error"])
-
-            # Add session info to result
-            result["session_id"] = session_id
-
-            return result
-        except Exception as e:
-            logger.error(f"Error running session: {str(e)}")
-            logger.error(traceback.format_exc())
-            raise HTTPException(status_code=500, detail=str(e))
-
-    # Add visualization endpoints
     @app.get("/agents/{agent_id}/visualize")
-    async def visualize_agent(agent_id: str):
-        try:
-            if agent_id not in pymdp_interface.agents:
-                raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    async def visualize_agent(agent_id: str, request: Request, format: str = "png"):
+        output_format(request, format)
+        if format == "json":
+            return invoke("get_agent", {"agent_id": agent_id})
+        return image(invoke("visualize_agent_model", {
+            "agent_id": agent_id, "output_file": f"agent_{uuid.uuid4().hex}.{format}"}), format)
 
-            # Generate visualization using the PyMDPInterface method
-            output_file = f"agent_{agent_id}_model.png"
-            result = pymdp_interface.visualize_agent_model(agent_id, output_file)
-
-            # Check if visualization was successful
-            if "error" in result:
-                raise HTTPException(status_code=500, detail=result["error"])
-
-            # If visualization file was generated, create a response with the file path
-            if "file_path" in result and os.path.exists(result["file_path"]):
-                # Get the agent data for additional information
-                agent_data = pymdp_interface.get_agent(agent_id)
-
-                return {
-                    "files": {
-                        "model": result["file_path"]
-                    },
-                    "data": agent_data,
-                    "visualization": result
-                }
-            else:
-                raise HTTPException(status_code=500, detail="Failed to generate agent visualization")
-        except Exception as e:
-            logger.error(f"Error visualizing agent: {str(e)}")
-            logger.error(traceback.format_exc())
-            raise HTTPException(status_code=500, detail=str(e))
+    @app.get("/simulations/{simulation_id}/visualize")
+    async def visualize_run(simulation_id: str, request: Request, format: str = "png"):
+        output_format(request, format)
+        if format == "json":
+            return invoke("get_simulation", {"simulation_id": simulation_id})
+        return image(invoke("visualize_simulation", {
+            "simulation_id": simulation_id, "output_file": f"simulation_{uuid.uuid4().hex}.{format}"}), format)
 
     @app.get("/sessions/{session_id}/visualize")
-    async def visualize_session(session_id: str, format: str = "png"):
-        """Visualize a simulation session.
-
-        Args:
-            session_id: ID of the session to visualize
-            format: Output format (png, svg, or json)
-
-        Returns:
-            Visualization data or error message
-        """
-        try:
-            # Check if sessions storage exists
-            if not hasattr(pymdp_interface, "sessions"):
-                pymdp_interface.sessions = {}
-
-            # Check if session exists
-            if session_id not in pymdp_interface.sessions:
-                return Response(
-                    content=json.dumps({"error": f"Session {session_id} not found"}),
-                    media_type="application/json",
-                    status_code=404
-                )
-
-            # Get session data
-            session = pymdp_interface.sessions[session_id]
-            agent_id = session.get("agent")
-            env_id = session.get("environment")
-
-            # Check if we have history data to visualize
-            if "history" not in session or not session["history"].get("timesteps"):
-                return Response(
-                    content=json.dumps({"error": "No simulation data available for visualization"}),
-                    media_type="application/json",
-                    status_code=400
-                )
-
-            # Generate visualization based on requested format
-            if format == "json":
-                # Return JSON representation of simulation history
-                return session["history"]
-            elif format in ["png", "svg"]:
-                # Call the PyMDP interface to generate visualization
-                output_file = f"session_{session_id}_visualization.{format}"
-                result = pymdp_interface.visualize_simulation(session_id, output_file)
-
-                # Check if visualization was successful
-                if "error" in result:
-                    return Response(
-                        content=json.dumps(result),
-                        media_type="application/json",
-                        status_code=500
-                    )
-
-                # If visualization file was generated, return it
-                if "file_path" in result and os.path.exists(result["file_path"]):
-                    with open(result["file_path"], "rb") as f:
-                        image_data = f.read()
-
-                    media_type = "image/png" if format == "png" else "image/svg+xml"
-                    return Response(content=image_data, media_type=media_type)
-                else:
-                    # Return placeholder visualization with session data
-                    visualization_data = {
-                        "session_id": session_id,
-                        "agent": agent_id,
-                        "environment": env_id,
-                        "timesteps": len(session["history"].get("timesteps", [])),
-                        "visualization_status": "generated"
-                    }
-
-                    return visualization_data
-            else:
-                return Response(
-                    content=json.dumps({"error": f"Unsupported format: {format}. Use 'png', 'svg', or 'json'"}),
-                    media_type="application/json",
-                    status_code=400
-                )
-        except Exception as e:
-            logger.error(f"Error visualizing session: {str(e)}")
-            logger.error(traceback.format_exc())
-            return Response(
-                content=json.dumps({"error": f"Error visualizing session: {str(e)}"}),
-                media_type="application/json",
-                status_code=500
-            )
+    async def visualize_session(session_id: str, request: Request, format: str = "png"):
+        from ..visualization.simulation import visualize_simulation
+        output_format(request, format)
+        history = invoke("get_session_history", {"session_id": session_id})
+        if format == "json":
+            return history
+        with registry.lock:
+            try:
+                result = visualize_simulation(history, f"session_{uuid.uuid4().hex}.{format}",
+                                               policy=interface.output_policy)
+            except ValueError as error:
+                raise HTTPException(422, str(error)) from None
+        return image(result, format)
 
     @app.get("/analyze/free_energy/{session_id}")
-    async def analyze_free_energy(session_id: str):
-        try:
-            # Check if exists in PyMDPInterface
-            if session_id not in pymdp_interface.sessions:
-                raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
-
-            # Generate free energy analysis
-            output_file = f"session_{session_id}_free_energy.png"
-            result = pymdp_interface.analyze_free_energy(session_id, output_file)
-
-            return {
-                "files": {
-                    "free_energy": output_file
-                },
-                "data": result
-            }
-        except Exception as e:
-            logger.error(f"Error analyzing free energy: {str(e)}")
-            logger.error(traceback.format_exc())
-            raise HTTPException(status_code=500, detail=str(e))
+    async def analyze_energy(session_id: str, request: Request, format: str = "json"):
+        from ..visualization.free_energy import measured_records
+        output_format(request, format)
+        if format == "json":
+            history = invoke("get_session_history", {"session_id": session_id})
+            try:
+                return {"session_id": session_id, "records": measured_records(history)}
+            except ValueError as error:
+                raise HTTPException(422, str(error)) from None
+        return image(invoke("analyze_free_energy", {
+            "session_id": session_id, "output_file": f"vfe_{uuid.uuid4().hex}.{format}"}), format)
 
     @app.get("/analyze/beliefs/{session_id}")
-    async def analyze_beliefs(session_id: str):
-        try:
-            # Check if exists in PyMDPInterface
-            if session_id not in pymdp_interface.sessions:
-                raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
-
-            # Generate belief dynamics visualization
-            output_file = f"session_{session_id}_belief_dynamics.png"
-            result = pymdp_interface.plot_belief_dynamics(session_id, output_file)
-
-            return {
-                "files": {
-                    "belief_dynamics": output_file
-                },
-                "data": result
-            }
-        except Exception as e:
-            logger.error(f"Error analyzing beliefs: {str(e)}")
-            logger.error(traceback.format_exc())
-            raise HTTPException(status_code=500, detail=str(e))
-
-    # Add endpoint to create gridworld environment
-    @app.post("/tools/create_environment")
-    async def create_gridworld_environment(request: Request):
-        try:
-            data = await request.json()
-            params = data.get("params", {})
-
-            name = params.get("name", "GridWorldEnv")
-            grid_size = params.get("grid_size", [3, 3])
-            reward_locations = params.get("reward_locations", [[2, 2]])
-
-            # Create environment
-            environment = {
-                "type": "grid_world",
-                "name": name,
-                "grid_size": grid_size,
-                "reward_locations": reward_locations
-            }
-
-            # Store in the interface
-            pymdp_interface.environments[name] = environment
-
-            return {"id": name, **environment}
-        except Exception as e:
-            logger.error(f"Error creating environment: {str(e)}")
-            logger.error(traceback.format_exc())
-            raise HTTPException(status_code=500, detail=str(e))
-
-    # Add route to list sessions
-    @app.get("/sessions")
-    async def get_sessions():
-        """Get all available sessions.
-
-        Returns:
-            List of session IDs
-        """
-        try:
-            # Initialize sessions if not already done
-            if not hasattr(pymdp_interface, "sessions"):
-                pymdp_interface.sessions = {}
-
-            sessions = []
-            for session_id, session_data in pymdp_interface.sessions.items():
-                sessions.append({
-                    "id": session_id,
-                    "agent": session_data.get("agent"),
-                    "environment": session_data.get("environment"),
-                    "timesteps": len(session_data.get("history", {}).get("timesteps", []))
-                })
-
-            return {"sessions": sessions}
-        except Exception as e:
-            logger.error(f"Error getting sessions: {str(e)}")
-            logger.error(traceback.format_exc())
-            return Response(
-                content=json.dumps({"error": f"Error getting sessions: {str(e)}"}),
-                media_type="application/json",
-                status_code=500
-            )
+    async def analyze_beliefs(session_id: str, request: Request, format: str = "json"):
+        from ..belief_dynamics import calculate_belief_statistics
+        output_format(request, format)
+        if format == "json":
+            history = invoke("get_session_history", {"session_id": session_id})
+            try:
+                return calculate_belief_statistics([t["beliefs"] for t in history["timesteps"]])
+            except ValueError as error:
+                raise HTTPException(422, str(error)) from None
+        return image(invoke("plot_belief_dynamics", {
+            "session_id": session_id, "output_file": f"beliefs_{uuid.uuid4().hex}.{format}"}), format)
 
     return app
 
-# Instantiate the app at the module level for Uvicorn
-app = create_app()
+
+
 
 if __name__ == "__main__":
-    # This block is now only for direct execution of this file,
-    # Uvicorn will use the 'app' instance defined above.
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    import uvicorn
+    uvicorn.run(create_app(), host=os.environ.get("HOST", "127.0.0.1"),
+                port=int(os.environ.get("PORT", "8080")), workers=1)

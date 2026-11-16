@@ -1,161 +1,191 @@
 #!/usr/bin/env python3
-"""
-Run all MCP-PyMDP tests and examples.
-
-This script will start the MCP server and then run all the example scripts
-to test the functionality in the correct sequence.
-"""
-
+"""Own one exact REST child and preserve every example outcome."""
+import argparse
+import json
+import math
 import os
+import signal
 import subprocess
 import sys
 import time
-from datetime import datetime
+import uuid
+from contextlib import contextmanager
 from pathlib import Path
+from urllib.error import URLError
+from urllib.request import urlopen
 
-import requests
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS = Path(__file__).resolve().parent
+EXAMPLES = ("test_server.py", "mcp_pymdp_example.py", "mcp_gridworld_examples.py", "pymcp_examples_fixed.py")
 
-# Add project root to path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-sys.path.insert(0, str(project_root / "src"))
 
-def start_server(output_dir, port=8080):
-    """Start the MCP server in a subprocess."""
-    print("Starting MCP server...")
-    server_process = subprocess.Popen(
-        [sys.executable, "scripts/start_mcp_server.py", "--port", str(port), "--output-dir", output_dir],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        cwd=str(project_root)
-    )
+class StartupError(RuntimeError):
+    def __init__(self, message, exit_code=1):
+        super().__init__(message)
+        self.exit_code = (128 - exit_code if exit_code < 0 else exit_code) or 1
 
-    # Wait for the server to start by checking the endpoint
-    max_retries = 10
-    retry_interval = 1
-    server_url = f"http://localhost:{port}/ping"
 
-    print(f"Waiting for server to start on {server_url}...")
-    for i in range(max_retries):
-        try:
-            response = requests.get(server_url, timeout=1)
-            if response.status_code == 200:
-                print(f"Server started successfully after {i+1} retries!")
-                return server_process
-        except requests.RequestException:
-            pass
+class StopRequested(BaseException):
+    def __init__(self, signum):
+        self.signum = signum
 
-        # Check if process is still running
-        if server_process.poll() is not None:
-            print("Error: Server process terminated unexpectedly")
-            stdout, stderr = server_process.communicate()
-            print(f"Server stdout: {stdout.decode('utf-8')}")
-            print(f"Server stderr: {stderr.decode('utf-8')}")
-            return None
 
-        print(f"Server not ready, retrying in {retry_interval} seconds... ({i+1}/{max_retries})")
-        time.sleep(retry_interval)
-
-    print("Error: Server failed to start within the timeout period")
-    return None
-
-def run_test_script(script_name, output_dir, port=8080):
-    """Run a test script and return the result."""
-    script_path = Path(__file__).parent / script_name
-    print(f"\nRunning {script_name}...")
-
-    # Create command with appropriate arguments
-    cmd = [sys.executable, str(script_path), "--port", str(port), "--output-dir", output_dir]
-
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        cwd=str(project_root)
-    )
-
-    print(f"--- {script_name} output ---")
-    print(result.stdout)
-
-    if result.stderr:
-        print(f"--- {script_name} errors ---")
-        print(result.stderr)
-
-    return result.returncode == 0
-
-def main():
-    """Run all tests and examples in the correct sequence."""
-    print("Starting test suite for MCP-PyMDP")
-
-    # Create a timestamp-based directory for all outputs
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    base_output_dir = project_root / "scripts" / "outputs" / f"run_{timestamp}"
-    os.makedirs(base_output_dir, exist_ok=True)
-    print(f"All outputs will be saved to: {base_output_dir}")
-
-    # Use a non-default port to avoid conflicts
-    port = 8090
-
-    # Create subdirectories for each test script
-    script_dirs = {
-        "server": str(base_output_dir / "server"),
-        "test_server.py": str(base_output_dir / "test_server"),
-        "mcp_pymdp_example.py": str(base_output_dir / "mcp_pymdp_example"),
-        "mcp_gridworld_examples.py": str(base_output_dir / "mcp_gridworld_examples"),
-        "pymcp_examples_fixed.py": str(base_output_dir / "pymcp_examples_fixed")
-    }
-
-    # Create all subdirectories
-    for directory in script_dirs.values():
-        os.makedirs(directory, exist_ok=True)
-
-    # Start the server
-    server_process = start_server(script_dirs["server"], port=port)
-
-    if server_process is None:
-        print("Failed to start server. Exiting.")
-        return 1
-
+@contextmanager
+def handled_signals():
+    def stop(signum, frame):
+        raise StopRequested(signum)
+    previous = {sig: signal.signal(sig, stop) for sig in (signal.SIGINT, signal.SIGTERM)}
     try:
-        # Define the scripts to run in the correct order
-        scripts = [
-            "test_server.py",             # Basic server functionality test
-            "mcp_pymdp_example.py",       # Simple PyMDP examples
-            "mcp_gridworld_examples.py",  # Grid world examples
-            "pymcp_examples_fixed.py"     # More advanced PyMDP examples
-        ]
-
-        # Run each script in sequence
-        results = {}
-        for script in scripts:
-            results[script] = run_test_script(script, script_dirs[script], port=port)
-
-            # If a critical script fails, we might want to stop
-            if not results[script] and script == "test_server.py":
-                print(f"Critical test {script} failed. Stopping further tests.")
-                break
-
-        # Print summary
-        print("\n--- Test Results Summary ---")
-        for script, success in results.items():
-            status = "PASS" if success else "FAIL"
-            print(f"{script}: {status}")
-
-        # Print location of outputs
-        print(f"\nAll test outputs are saved in: {base_output_dir}")
-
+        yield
     finally:
-        # Terminate the server
-        print("\nStopping MCP server...")
-        server_process.terminate()
-        try:
-            server_process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            print("Server didn't terminate gracefully, forcing...")
-            server_process.kill()
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
 
-    print("\nTest suite completed.")
-    return 0 if all(results.values()) else 1
+
+def reap(process):
+    if process.poll() is None:
+        try:
+            process.terminate()
+        except ProcessLookupError:
+            pass
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=5)
+
+
+class OwnedServer:
+    def __init__(self, command, log_file, port, *, host="127.0.0.1", startup_timeout=30, env=None):
+        if not math.isfinite(startup_timeout) or startup_timeout <= 0 or startup_timeout > 300:
+            raise ValueError("startup_timeout must be in (0,300]")
+        self.command, self.log_file, self.port, self.host = command, Path(log_file), port, host
+        self.startup_timeout = startup_timeout
+        self.env = dict(os.environ if env is None else env)
+        self.instance_id = uuid.uuid4().hex
+        self.env["MCP_INSTANCE_ID"] = self.instance_id
+        self.process = self.stream = None
+
+    def start(self):
+        try:
+            self.log_file.parent.mkdir(parents=True, exist_ok=True)
+            self.stream = self.log_file.open("wb")
+            self.process = subprocess.Popen(self.command, cwd=ROOT, env=self.env,
+                                            stdout=self.stream, stderr=subprocess.STDOUT)
+            deadline = time.monotonic() + self.startup_timeout
+            host = f"[{self.host}]" if ":" in self.host else self.host
+            while time.monotonic() < deadline:
+                if self.process.poll() is not None:
+                    raise StartupError(f"owned server exited {self.process.returncode}; see {self.log_file}",
+                                       self.process.returncode)
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                try:
+                    with urlopen(f"http://{host}:{self.port}/ping", timeout=min(1, remaining)) as response:
+                        data = response.read(65537)
+                        payload = json.loads(data) if len(data) <= 65536 else None
+                        ready = (response.status == 200 and isinstance(payload, dict)
+                                 and payload.get("status") == "ok"
+                                 and payload.get("instance_id") == self.instance_id
+                                 and payload.get("pid") == self.process.pid)
+                    if ready and self.process.poll() is None:
+                        return self.process.pid
+                except (URLError, OSError, ValueError):
+                    pass  # Bounded readiness polling, never a mutating tool retry.
+                time.sleep(min(0.05, max(0, deadline - time.monotonic())))
+            raise StartupError(f"owned server readiness timed out; see {self.log_file}")
+        except BaseException:
+            try:
+                self.close()
+            except Exception as error:
+                print(f"Server cleanup failed: {error}", file=sys.stderr)
+            raise
+
+    def close(self):
+        try:
+            if self.process is not None:
+                reap(self.process)
+        finally:
+            if self.stream is not None:
+                self.stream.close()
+                self.stream = None
+
+
+def run_child(command, log_file, timeout):
+    with Path(log_file).open("wb") as stream:
+        process = subprocess.Popen(command, cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT)
+        try:
+            return process.wait(timeout=timeout)
+        except BaseException:
+            reap(process)
+            raise
+
+
+def run_batch(examples, output_dir, port=8090, *, startup_timeout=30, example_timeout=300, server_command=None):
+    if (isinstance(examples, (str, bytes)) or not examples or len(set(map(str, examples))) != len(examples)
+            or not math.isfinite(example_timeout) or not 0 < example_timeout <= 3600):
+        raise ValueError("nonempty unique examples and bounded example_timeout required")
+    output = Path(output_dir).resolve()
+    output.mkdir(parents=True, exist_ok=False)
+    command = server_command if server_command is not None else [
+        sys.executable, str(SCRIPTS / "start_fastapi_server.py"), "--host", "127.0.0.1",
+        "--port", str(port), "--output-dir", str(output / "server")]
+    server = OwnedServer(command, output / "server.log", port, startup_timeout=startup_timeout)
+    results = {str(script): {"status": "not_run"} for script in examples}
+    status = 0
+    current_script = None
+    with handled_signals():
+        try:
+            server.start()
+            for index, script in enumerate(examples):
+                current_script = str(script)
+                results[current_script] = {"status": "running"}
+                path = Path(script).resolve()
+                destination = output / f"example_{index}"
+                destination.mkdir()
+                code = run_child([sys.executable, str(path), "--host", "127.0.0.1", "--port", str(port),
+                                  "--output-dir", str(destination)], output / f"example_{index}.log", example_timeout)
+                code = 128 - code if code < 0 else code
+                results[str(script)] = {"status": "completed" if code == 0 else "failed", "exit_code": code}
+                if code and status == 0:
+                    status = code
+                if code and path.name == "test_server.py":
+                    break
+        except StopRequested as error:
+            status = status or 128 + error.signum
+            if current_script is not None and results[current_script]["status"] == "running":
+                results[current_script] = {"status": "failed", "signal": error.signum}
+            results["interruption"] = {"status": "failed", "signal": error.signum}
+        except Exception as error:
+            status = status or (error.exit_code if isinstance(error, StartupError) else 1)
+            if current_script is not None and results[current_script]["status"] == "running":
+                results[current_script] = {"status": "failed", "error": str(error)}
+            results["owner_error"] = {"status": "failed", "error": str(error)}
+        finally:
+            try:
+                server.close()
+            except Exception as error:
+                status = status or 1
+                results["cleanup"] = {"status": "failed", "error": str(error)}
+    (output / "summary.json").write_text(json.dumps({"exit_code": status, "results": results}, indent=2))
+    print(json.dumps({"exit_code": status, "output_dir": str(output), "results": results}))
+    return status
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--port", type=int, default=8090)
+    parser.add_argument("--output-dir", default=str(SCRIPTS / "outputs"))
+    parser.add_argument("--example", action="append")
+    parser.add_argument("--startup-timeout", type=float, default=30)
+    parser.add_argument("--example-timeout", type=float, default=300)
+    options = parser.parse_args(argv)
+    examples = [str((SCRIPTS / path).resolve()) for path in (options.example or EXAMPLES)]
+    output = Path(options.output_dir) / ("run_" + uuid.uuid4().hex)
+    return run_batch(examples, output, options.port, startup_timeout=options.startup_timeout,
+                     example_timeout=options.example_timeout)
+
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

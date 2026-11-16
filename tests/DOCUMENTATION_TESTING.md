@@ -1,313 +1,54 @@
 # PyMDP-MCP Test Suite Documentation
 
-## Table of Contents
-1. [Overview](#overview)
-2. [Test Structure](#test-structure)
-3. [Running Tests](#running-tests)
-4. [Test Coverage](#test-coverage)
-5. [Validation Approach](#validation-approach)
-6. [Output Organization](#output-organization)
-7. [Recent Improvements](#recent-improvements)
-8. [Future Development](#future-development)
-
 ## Overview
 
-This test suite verifies that the PyMDP-MCP server is a complete, authentic
-implementation providing access to the real PyMDP library through the Model
-Context Protocol (MCP). The tests confirm proper integration with PyMDP by
-validating that:
+The [test inventory](README.md) maps each focused module to its actual consumer
+contract. Native Agent calls use the installed locked PyMDP backend; transport,
+filesystem, process and renderer controls use small deterministic local inputs.
+This is a deliberately bounded wrapper, not complete access to every PyMDP
+algorithm, learning scheme or scientific model.
+
+## Running tests
+
+`./run.sh test-full` is the canonical full suite and `./run.sh test` is its fast
+arm. Use an explicit pytest selection only for a declared focused proof in an
+already prepared environment. Repository governance may require the qualified
+offline GitVault runner even for that selection.
+
+The retired category organizers, unittest-class templates and
+`src/main.py test` entry point are not supported. Required failures stay failures.
+After a repair, retain prior passing evidence and rerun the affected contract;
+do not describe the combined evidence as one newly executed full gate.
+
+## Validation approach
+
+- Admit native unbatched A/B/C/D/concentrations/settings, including singleton
+  dimensions, signed utilities, structural zeros and finite resource bounds.
+- Observe real evidence, infer beliefs/policies, select and successfully
+  execute or explicitly commit an action exactly once. Reset and failed-step
+  controls protect the temporal prior.
+- Exercise real JSON-RPC initialization, stdio framing, SSE channel correlation
+  and backpressured disconnect cleanup.
+- Exercise HTTP/direct consumers with one result envelope, real PNG/SVG bytes,
+  correct query formats and explicit error propagation.
+- Inspect actual renderer artists and generated images/GIF frames; primary and
+  companion output paths must both resist traversal and symlink redirection.
+- Exercise real owned subprocesses, deadlines, readiness/nonces and cleanup.
+
+## Measurements
+
+VFE uses signed entropy and the actual observation/prior. Full policy
+posteriors and negative/positive EFE conventions are retained.
+Unavailable/infinite support remains explicit. No copied renderer,
+placeholder image or arbitrary risk/ambiguity decomposition supplies evidence.
+See [the public measurement contract](../docs/mcp_tools.md).
+
+## Evidence boundaries
+
+Keep actual case outcomes, skips, logs, input/source/index/runtime bindings and
+process settlement. A process exit alone is insufficient. A native source
+subset is not installed-artifact, image, full GNN, coverage or release proof.
+The [generated gate facts](../docs/_generated/gate-facts.md) remain dated
+producer output until the canonical producer records a new gate; no count is
+inferred from test source or copied into current prose.
 
-1. The server uses the real PyMDP library, not a mock implementation
-2. Results from the MCP server match results from direct PyMDP API calls
-3. All key PyMDP features are accessible through the MCP interface
-4. The system correctly handles complex active inference scenarios
-
-Current state: the suite passes against `inferactively-pymdp` 1.0.5 (the
-declared dependency in `pyproject.toml`). The collected total and per-file
-counts are generated into
-[`../docs/_generated/gate-facts.md`](../docs/_generated/gate-facts.md) by
-`scripts/gate_facts.py`; do not copy them here.
-
-## Test Structure
-
-The test suite consists of several focused test files:
-
-- **test_pymdp_interface.py**: Tests the PyMDPInterface class that connects
-  the MCP server to the PyMDP library
-- **test_mcp_tools.py**: Tests the MCP tools that expose PyMDP functionality
-  through the MCP protocol
-- **test_additional_functions.py**: Tests advanced features and edge cases of
-  the PyMDP library integration
-- **test_agent_visualization.py**: Tests visualization capabilities for active
-  inference agents and their generative models
-- **test_mcp_full.py**: End-to-end tests of the FastMCP server (tool
-  registration, schema generation, lifespan context)
-- **test_belief_dynamics.py**: Tests belief-dynamics extraction, statistics,
-  and visualization helpers
-- **test_template.py**: Reusable test-class templates for new tests
-
-Each test file contains multiple test classes and methods that validate
-specific aspects of the integration:
-
-| Test File | Focus Areas | Key Test Classes |
-|-----------|-------------|------------------|
-| test_pymdp_interface.py | Core functionality, API | TestPyMDPInterface |
-| test_mcp_tools.py | MCP protocol, tools | TestMCPTools |
-| test_additional_functions.py | Advanced features, learning | TestAdditionalFunctions |
-| test_agent_visualization.py | Visualization, generative models | TestAgentVisualization |
-| test_mcp_full.py | Server lifecycle, schema | TestMCPFunctionality |
-| test_belief_dynamics.py | Belief dynamics | TestBeliefDynamics |
-
-## Running Tests
-
-### Running All Tests (canonical)
-
-```bash
-./run.sh test-full   # from the repository root — every collected test
-./run.sh test        # fast arm: deselects the `slow` tests
-```
-
-### Legacy runners
-
-The legacy organizers still work; they run each test file directly (unittest
-style) and organize the outputs:
-
-```bash
-# From the tests/ directory — via the shell wrapper:
-./run_and_organize.sh
-./run_and_organize.sh --category visualization
-
-# Or directly:
-uv run python run_all_tests.py --category interface
-uv run python run_all_tests.py --file test_pymdp_interface.py --summary
-```
-
-`run_all_tests.py` supports `--category`, `--file`, `--keep-old`, `--verbose`,
-and `--summary`. Outputs are organized by category automatically.
-
-### Running Specific Test Files
-
-You can run individual test files:
-
-```bash
-uv run python -m pytest tests/test_pymdp_interface.py
-```
-
-or, unittest-style:
-
-```bash
-uv run python -m unittest tests/test_pymdp_interface.py
-uv run python -m unittest tests/test_mcp_tools.py
-uv run python -m unittest tests/test_additional_functions.py
-uv run python -m unittest tests/test_agent_visualization.py
-```
-
-### Running Specific Test Classes or Methods
-
-To run a specific test class:
-
-```bash
-uv run python -m unittest tests.test_pymdp_interface.TestPyMDPInterface
-```
-
-To run a specific test method:
-
-```bash
-uv run python -m unittest tests.test_pymdp_interface.TestPyMDPInterface.test_create_agent
-```
-
-## Test Coverage
-
-The test suite provides comprehensive coverage of PyMDP's functionality:
-
-| PyMDP Feature | Test Coverage | Test Files | Key Test Methods |
-|--------------|--------------|------------|------------------|
-| Agent Creation | ✅ High | test_pymdp_interface.py, test_additional_functions.py | test_create_agent, test_complex_generative_model |
-| Generative Models | ✅ High | test_pymdp_interface.py, test_agent_visualization.py | test_define_generative_model, test_simple_agent_visualization |
-| Observation Models (A) | ✅ High | test_pymdp_interface.py, test_agent_visualization.py | test_define_generative_model, test_multi_modality_agent_visualization |
-| Transition Models (B) | ✅ High | test_pymdp_interface.py, test_agent_visualization.py | test_define_generative_model, test_grid_world_simulation_visualization |
-| Preference Distribution (C) | ✅ High | test_pymdp_interface.py, test_agent_visualization.py | test_define_generative_model, test_grid_world_simulation_visualization |
-| Prior Beliefs (D) | ✅ High | test_agent_visualization.py | test_simple_agent_visualization, test_multi_modality_agent_visualization |
-| State Inference | ✅ High | test_pymdp_interface.py, test_additional_functions.py | test_infer_states, test_inference_methods_comparison |
-| Policy Inference | ✅ High | test_pymdp_interface.py | test_infer_policies |
-| Action Selection | ✅ High | test_pymdp_interface.py | test_sample_action |
-| Learning Configuration | ✅ Medium | test_additional_functions.py | test_learning_parameters |
-| Grid World Environment | ✅ High | test_pymdp_interface.py, test_agent_visualization.py | test_create_grid_world_env, test_grid_world_simulation_visualization |
-| Custom Environments | ⚠️ Medium | test_additional_functions.py | test_custom_environment |
-| Temporal Planning | ✅ High | test_additional_functions.py | test_temporal_planning |
-| Multi-factor Models | ⚠️ Medium | test_additional_functions.py | test_complex_generative_model |
-| MCP Integration | ✅ High | test_mcp_tools.py, test_mcp_full.py | Various methods |
-| Visualization | ✅ High | test_pymdp_interface.py, test_agent_visualization.py | test_visualize_simulation, test_grid_world_simulation_visualization |
-
-### Active Inference Core Components
-
-#### Perception (State Inference)
-
-Tests cover the following aspects of perception in active inference:
-
-- **Variational Inference Methods**: Both Variational Message Passing (VMP) and
-  Fixed-Point Iteration (FPI) method names are exercised
-  (test_advanced_inference_methods). With the current immutable PyMDP the
-  effective inference algorithm is set at agent construction; the `method`
-  argument is retained for interface compatibility and recorded per call.
-- **Multiple Observation Modalities**: Tests with agents having multiple
-  sensory channels.
-- **Hidden State Inference**: Tests verify correct posterior beliefs over
-  hidden states.
-- **Multi-factor Models**: Tests for multi-factor state spaces.
-
-#### Action (Policy Selection)
-
-Tests cover the following aspects of action selection in active inference:
-
-- **Expected Free Energy Calculation**: Tests verify the interface returns
-  expected free energy alongside the policy posterior.
-- **Policy Posterior Computation**: Tests verify a probability distribution
-  over policies is returned.
-- **Action Sampling**: Tests verify actions are sampled from the policy
-  posterior.
-- **Multi-step Policies**: Tests verify planning over multiple time steps
-  (`policy_len` at construction, e.g. 8 policies for `policy_len=3` with two
-  actions).
-
-#### Learning (Construction-Time Configuration)
-
-With the current immutable (equinox) PyMDP, learning parameters are configured
-at **agent construction** and cannot be mutated afterwards. Tests verify that
-the interface passes this configuration through correctly:
-
-- **Learning flags**: `learn_A` / `learn_B` are honored at construction.
-- **Dirichlet concentrations**: `pA` / `pB` priors are accepted and stored.
-- **Post-construction validity**: the agent remains fully usable for
-  inference after learning configuration.
-
-## Validation Approach
-
-The tests use a multi-layered validation approach to ensure correct integration
-with PyMDP:
-
-1. **Direct API Comparison**: Compare results obtained via the MCP server with
-   results obtained by calling PyMDP directly
-2. **Instance Verification**: Verify that objects created by the MCP server are
-   instances of the corresponding PyMDP classes
-3. **Functional Validation**: Test end-to-end functionality to ensure the
-   server behaves like a proper PyMDP implementation
-4. **Visual Validation**: Generate visualizations that confirm the generative
-   model structure and agent behavior
-
-## Output Organization
-
-All test outputs are saved to the `tests/output` directory (gitignored,
-regenerated on each run), which contains the following subdirectories:
-
-- **generative_models/**: Visualizations of agent A, B, C, and D matrices
-- **simulations/**: Visualizations of agent trajectories, policies, and actions
-- **belief_dynamics/**: Visualizations of belief updates over time
-- **free_energy/**: Free energy calculations and expected free energy components
-- **logs/**: Detailed computation logs and JSON data
-- **results/**: Test results and summary files
-
-Example output files include:
-
-| File Type | Example Files | Purpose |
-|-----------|---------------|---------|
-| Generative Model Visualizations | `simple_agent_generative_model.png` | Visualize A, B, C, D matrices |
-| Simulation Visualizations | `grid_agent_simulation.png` | Show agent trajectories and environment |
-| Belief Dynamics | `grid_agent_belief_dynamics.png` | Track belief updates over time |
-| Free Energy Components | `grid_agent_expected_free_energy.png` | Show risk, ambiguity, and total EFE |
-| Computation Logs | `grid_agent_simulation_computation_logs.json` | Detailed logs of inference steps |
-| Test Results | `simulation_test_results.json` | Test input, output, and validation data |
-
-## Recent Improvements
-
-### Documentation Improvements
-
-1. ✅ **Enhanced Documentation Structure**
-   - Consolidated multiple documentation files
-   - Added detailed coverage information
-   - Included comprehensive running instructions
-
-2. ✅ **Added Test Coverage Documentation**
-   - Created a detailed mapping of PyMDP features to test coverage
-   - Highlighted which aspects of Active Inference are tested
-   - Identified areas for future test coverage expansion
-
-### Test Organization Improvements
-
-1. ✅ **Output Directory Structure**
-   - Created subdirectories for different output types
-   - Added automatic file organization
-   - Implemented output file tracking and validation
-
-2. ✅ **Test Categorization**
-   - Added test categories in `run_all_tests.py`
-   - Implemented selective test running
-   - Added verbosity controls
-
-### Process Improvements
-
-1. ✅ **Enhanced run_all_tests.py**
-   - Added command-line arguments for specific test categories
-   - Implemented verbosity controls
-   - Added options to preserve existing output files
-   - Added automatic output file organization
-
-2. ✅ **Added Summary Generation**
-   - Enhanced summary outputs with file statistics
-   - Added support for detailed JSON test summaries
-   - Included categorization of output files
-
-### Visualization Tests
-
-1. ✅ **Added Comprehensive Agent Visualization**
-   - Created tests for visualizing agent generative models
-   - Added visualization of A, B, C, and D matrices
-   - Included information panels explaining the models
-
-2. ✅ **Added Belief Dynamics Visualization**
-   - Created tests for visualizing beliefs over time
-   - Added visualization of multiple state factors
-   - Included heatmap representations of belief changes
-
-3. ✅ **Enhanced Simulation Visualization**
-   - Improved visualization of agent trajectories
-   - Added visualization of policy selection
-   - Added visualization of expected free energy components
-
-## Future Development
-
-The following areas could benefit from expanded test coverage and improvements:
-
-1. **More Complex Hierarchical Models**: Additional tests for deeper
-   hierarchical models.
-2. **Continuous State Space Models**: Tests for continuous state
-   representations.
-3. **Custom Inference Schemes**: Tests for custom message passing algorithms.
-4. **Precision Parameters**: More thorough testing of precision parameters and
-   their effects.
-5. **Advanced Learning Mechanisms**: Tests for longer-horizon learning
-   scenarios (the current API configures learning at construction).
-6. **Alternative Environment Types**: Tests for different environment classes
-   beyond grid worlds.
-
-### Priority Tasks
-
-If continuing with improvements, the following tasks are recommended in order
-of priority:
-
-1. **Update Existing Test Docstrings**: Ensure all test methods have
-   standardized docstrings.
-2. **Add More Edge Case Tests**: Improve robustness with additional test cases.
-3. **Set Up CI Integration**: Automate testing through GitHub Actions (the
-   repository currently has no CI workflow).
-4. **Enhance Visualization Tests**: Add more comprehensive visualization
-   capabilities.
-5. **Implement Test Database**: Track and compare test results over time.
-
-## Conclusion
-
-The PyMDP-MCP test suite provides strong evidence that this is a real MCP
-server for PyMDP, offering complete and accurate access to PyMDP's
-functionality through the Model Context Protocol. The comprehensive testing,
-detailed visualizations, and thorough validation ensure that clients can rely
-on this server for authentic active inference capabilities.

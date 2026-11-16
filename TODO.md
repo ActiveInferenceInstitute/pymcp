@@ -1,9 +1,19 @@
 # PyMCP (PyMDP-MCP) — Backlog
 
-Status:      OPEN — suite GREEN (`./run.sh test-full`); counts in `docs/_generated/gate-facts.md`
+Status:      OPEN — native contract cutover; full gate facts remain separately producer-bound
 Owner:       Daniel Ari Friedman (Active Inference Institute)
-Last reviewed: 2026-11-12 (gate entry point, CI dedup, lint retirement, docs
-             index, pymdp 1.0.5 / GNN v5.1.0 reconciliation)
+Last reviewed: 2026-11-13 (focused native/transport/process/render proof;
+             installed/image/GNN/release gates remain separate)
+
+Current cutover: P1–P34 cover native model/lifecycle/measurement, registry,
+transport/output/process and example contracts; the focused regression
+inventory is [tests/README.md](tests/README.md). PD1–PD4 current documentation
+tracks those contracts; PD5 remains the explicitly dated historical snapshot.
+All historical closures and their original receipts below are retained.
+The three open entries remain open until their complete parent-owned
+behavior/documentation/integration obligations are settled. P21/P22 preserve
+existing reset/terminal defaults; choosing different scientific defaults remains
+an owner decision. No current lint, full gate or image pass is inferred here.
 
 ## Sections
 

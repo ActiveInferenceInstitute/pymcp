@@ -1,8 +1,7 @@
 # `src/` — implementation
 
-The Python source tree for pymcp. Both servers are thin wrappers over one core
-class, `PyMDPInterface` in [`mcp/utils.py`](mcp/utils.py), so MCP and REST behave
-identically.
+The Python source tree for pymcp. MCP, REST and explicit direct clients use
+one strict registry and `PyMDPInterface`; their instances do not share state.
 
 ## Layout
 
@@ -11,15 +10,18 @@ src/
   main.py                  # MCP server entry point (FastMCP over SSE / stdio)
   mcp/
     __init__.py            # package version and metadata
-    utils.py               # PyMDPInterface — the core integration layer
-    belief_dynamics.py     # belief-trajectory helpers
-    client.py, client/     # MCPClient (network) and DirectMCPClient (in-process)
-    environments/          # gridworld + custom-environment helpers
+    api.py                 # explicit tool registry and strict native schemas
+    models.py              # model/settings admission and trusted limits
+    utils.py               # native inference, committed transitions and histories
+    outputs.py             # primary/companion output custody
+    belief_dynamics.py     # actual belief-history analysis
+    client/                # HTTP client, explicit direct client and toolkit
+    environments/          # real grid/custom objects
     server/
-      app.py               # FastAPI HTTP app (uvicorn mcp.server.app:app)
-      fastmcp.py           # bundled FastMCP implementation used by src/main.py
-    testing/               # test fixtures, helpers, and setup utilities
-    visualization.py, visualization/  # model / free-energy / belief-dynamics plots
+      app.py               # FastAPI create_app factory; no eager global app
+      fastmcp.py           # bundled MCP JSON-RPC, stdio and SSE
+    testing/               # shared test inputs and helpers
+    visualization/         # actual model/history renderers
 ```
 
 ## Entry points
@@ -42,8 +44,8 @@ Nothing in this tree is executed on its own except the entry points above; see
 
 ## Conventions
 
-- Keep the MCP layer and the FastAPI layer thin: add behaviour to
-  `PyMDPInterface`, then expose it, so both surfaces stay consistent.
+- Keep transports thin: add admitted core behavior and an explicit registry
+  entry/schema together; public attributes are not automatically tools.
 - Convert NumPy/JAX values to plain JSON at the boundary (see
   [`mcp/utils.py`](mcp/utils.py)).
 - Do not vendor PyMDP; call the installed `inferactively-pymdp` package.
