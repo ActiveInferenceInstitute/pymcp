@@ -37,7 +37,7 @@ Different MCP, REST or direct instances do not share these registries.
 Selection is not transition execution. Only successful token-matched stepping
 or a caller's explicit external commit advances the predictive prior.
 Agent reset restores its prior and invalidates tokens; environment reset is
-separate. See the [complete lifecycle](mcp_tools.md).
+separate. See the [complete lifecycle](../reference/mcp_tools.md).
 
 Public matrices are unbatched; batching is an internal Agent boundary.
 Transport adapters do not invent observations, models, histories or free-energy

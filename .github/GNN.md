@@ -57,4 +57,4 @@ job means at least one `*.gnn.md` specification passed the identity check.
 
 The first run needs network access to install the pinned revision; after that
 `.gnn-venv/` is reused and the check is local. See the
-[Run Guide](../docs/RUN_GUIDE.md) for the full gate.
+[Run Guide](../docs/guides/RUN_GUIDE.md) for the full gate.

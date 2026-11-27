@@ -41,7 +41,7 @@ VFE uses signed entropy and the actual observation/prior. Full policy
 posteriors and negative/positive EFE conventions are retained.
 Unavailable/infinite support remains explicit. No copied renderer,
 placeholder image or arbitrary risk/ambiguity decomposition supplies evidence.
-See [the public measurement contract](../docs/mcp_tools.md).
+See [the public measurement contract](../docs/reference/mcp_tools.md).
 
 ## Evidence boundaries
 

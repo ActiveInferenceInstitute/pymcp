@@ -1,6 +1,6 @@
 # Advanced Features
 
-The [explicit tool registry](mcp_tools.md) defines the supported wrapper
+The [explicit tool registry](../reference/mcp_tools.md) defines the supported wrapper
 surface. Native Agent execution may use PyMDP's JAX implementation, but no
 `enable_jax`, custom inference, learning-update, comparison or distributed
 execution API is exposed.
@@ -30,7 +30,7 @@ isolated temporary outputs.
 
 Numerical Bayes/VFE helpers use stable log-space calculations and explicit
 support checks. Signed entropy, KL/accuracy and full negative/positive EFE
-conventions are in the [measurement contract](mcp_tools.md).
+conventions are in the [measurement contract](../reference/mcp_tools.md).
 No arbitrary decomposition or fallback energy curve is supplied.
 
 ## Sessions and clients

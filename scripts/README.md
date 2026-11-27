@@ -7,7 +7,7 @@ the tooling behind the `./run.sh` gate arms.
 ## Gate tooling
 
 These scripts are not examples; they back the arms of `./run.sh` (see
-[`../docs/RUN_GUIDE.md`](../docs/RUN_GUIDE.md)):
+[`../docs/guides/RUN_GUIDE.md`](../docs/guides/RUN_GUIDE.md)):
 
 | Script | Called by | Purpose |
 | --- | --- | --- |
@@ -20,7 +20,7 @@ These scripts are not examples; they back the arms of `./run.sh` (see
 Run from the repository root with `PROJECT_PY` set to an existing prepared
 environment's absolute Python executable and `PYTHONPATH="$PWD/src"`.
 Dependency provisioning is a separate authorized step; see
-[setup](../docs/setup.md). No example command should implicitly install or sync.
+[setup](../docs/guides/setup.md). No example command should implicitly install or sync.
 
 ## Supported entry points
 
@@ -55,7 +55,7 @@ For an already running authorized REST instance:
 PYTHONPATH="$PWD/src" "$PROJECT_PY" -B scripts/mcp_gridworld_examples.py --host 127.0.0.1 --port 8080 --output-dir /path/to/owned-output
 ```
 
-The REST launcher and bundled MCP commands are in [setup](../docs/setup.md).
+The REST launcher and bundled MCP commands are in [setup](../docs/guides/setup.md).
 They create independent in-memory state; running an MCP server does not
 populate a REST server or a direct client.
 
@@ -73,5 +73,5 @@ an SVG destination requires an explicit SVG request.
 
 Grid reset remains origin by default; custom reset remains first-state.
 Configured starts and stopping on terminal state are explicit opt-ins.
-See [the lifecycle and measurement contract](../docs/mcp_tools.md); these
+See [the lifecycle and measurement contract](../docs/reference/mcp_tools.md); these
 examples do not decide new scientific reset/terminal defaults.

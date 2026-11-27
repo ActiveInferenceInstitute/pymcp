@@ -1,7 +1,7 @@
 # MCP-PyMDP Tests
 
 The canonical gate remains `./run.sh`; its arms and measured facts are in
-the [run guide](../docs/RUN_GUIDE.md) and
+the [run guide](../docs/guides/RUN_GUIDE.md) and
 [generated gate facts](../docs/_generated/gate-facts.md).
 A focused receipt is not a replacement for the full gate or its measurements.
 

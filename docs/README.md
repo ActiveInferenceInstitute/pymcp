@@ -4,20 +4,20 @@ Welcome to the documentation for **pymcp** (`pymdp-mcp`) — an MCP server and
 FastAPI HTTP API for the PyMDP active inference library.
 
 **Quick Reference:** [Documentation Index](documentation-index.md) |
-[Run Guide (`./run.sh`)](RUN_GUIDE.md) | [Generated gate facts](_generated/gate-facts.md) |
+[Run Guide (`./run.sh`)](guides/RUN_GUIDE.md) | [Generated gate facts](_generated/gate-facts.md) |
 [GNN conformance](../.github/GNN.md) | [Project overview](../README.md)
 
 ## Contents
 
-1. **[Setup and Usage](setup.md)**
+1. **[Setup and Usage](guides/setup.md)**
    Install, run either server, configure environment variables, and drive
    `PyMDPInterface` directly.
 
-2. **[Testing](testing.md)**
+2. **[Testing](development/testing.md)**
    The suite layout, the `slow` marker and the fast arm, the legacy category
    runners, test outputs, and adding tests.
 
-3. **[Run Guide](RUN_GUIDE.md)**
+3. **[Run Guide](guides/RUN_GUIDE.md)**
    The gate entry point: every `./run.sh` arm, what CI runs, the pinned GNN
    conformance arm, and how the measured numbers are generated.
 
@@ -25,27 +25,27 @@ FastAPI HTTP API for the PyMDP active inference library.
    Flat list of every long-lived page in this directory, plus the repository
    records worth reading.
 
-5. **[Architecture](ARCHITECTURE.md)**
+5. **[Architecture](architecture/ARCHITECTURE.md)**
    Module layout, request lifecycle, and design decisions — with diagrams.
 
-6. **[MCP & PyMDP Integration](mcp_pymdp_integration.md)**
+6. **[MCP & PyMDP Integration](reference/mcp_pymdp_integration.md)**
    High-level overview of the project: what it is, its components, data flow,
    and how MCP tools map onto the `PyMDPInterface`.
 
-7. **[MCP Tools Reference](mcp_tools.md)**
+7. **[MCP Tools Reference](reference/mcp_tools.md)**
    The complete set of real tools exposed by the servers — every method on
    `PyMDPInterface`, with signatures, parameters, and return values.
 
-8. **[Implementation Details](implementation_details.md)**
+8. **[Implementation Details](architecture/implementation_details.md)**
    Technical detail on the layered architecture: `PyMDPInterface`, the FastMCP
    server, the FastAPI server, JSON/NumPy serialization, and session handling.
 
-9. **[Advanced Features](advanced_features.md)**
+9. **[Advanced Features](guides/advanced_features.md)**
    The capabilities that actually exist beyond the core loop: gridworld and
    custom environments, visualization/belief-dynamics, free-energy analysis,
    sessions, and direct vs. network clients.
 
-10. **[PyMDP Integration](pymdp_integration.md)**
+10. **[PyMDP Integration](reference/pymdp_integration.md)**
     How this project integrates the PyMDP pip package (`inferactively-pymdp`)
     as an unmodified dependency, and how compatibility is verified.
 
@@ -57,7 +57,7 @@ FastAPI HTTP API for the PyMDP active inference library.
 
 1. Install the package and PyMDP (see the root [`README.md`](../README.md)).
 2. Use `PyMDPInterface` directly for scripting, or run one of the two servers.
-3. See [mcp_tools.md](mcp_tools.md) for the full method reference.
+3. See [mcp_tools.md](reference/mcp_tools.md) for the full method reference.
 
 ## Verifying a change
 
@@ -72,7 +72,7 @@ One entry point, no remembered command lines:
 Arms, the two CI jobs (`tests`, `gnn-conformance`), the canonical pin
 `.github/gnn-pin.json` (schema `gnn-importer-pin/v1`, `v5.1.0`,
 `75c834bd8519dc7b5adc4d24f16bf393cfd1ecdf`) and what the conformance job parses
-are documented in the [Run Guide](RUN_GUIDE.md). Per-arm wall times and the
+are documented in the [Run Guide](guides/RUN_GUIDE.md). Per-arm wall times and the
 collected test counts are generated into
 [`_generated/gate-facts.md`](_generated/gate-facts.md) by
 `scripts/gate_facts.py`; they are not maintained by hand.
@@ -91,3 +91,11 @@ src/
     visualization/         # Model / free-energy / belief-dynamics visualization
 tests/                     # Test suite (run with pytest)
 ```
+
+## Documentation by topic
+
+- [Guides](guides/README.md)
+- [Architecture](architecture/README.md)
+- [Reference](reference/README.md)
+- [Development](development/README.md)
+- [Manuscript source and render](manuscript/README.md)

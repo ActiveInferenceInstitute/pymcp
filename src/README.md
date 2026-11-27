@@ -32,15 +32,15 @@ src/
 | `mcp/server/app.py` | FastAPI REST server. |
 | `mcp/utils.py` | `PyMDPInterface` — every tool and endpoint delegates here. |
 
-See [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) for the module diagram
-and request lifecycle, and [`../docs/implementation_details.md`](../docs/implementation_details.md)
+See [`../docs/architecture/ARCHITECTURE.md`](../docs/architecture/ARCHITECTURE.md) for the module diagram
+and request lifecycle, and [`../docs/architecture/implementation_details.md`](../docs/architecture/implementation_details.md)
 for serialization and session handling.
 
 ## Running
 
 Nothing in this tree is executed on its own except the entry points above; see
 [`../README.md`](../README.md) for install and run commands and
-[`../docs/setup.md`](../docs/setup.md) for the configuration variables.
+[`../docs/guides/setup.md`](../docs/guides/setup.md) for the configuration variables.
 
 ## Conventions
 

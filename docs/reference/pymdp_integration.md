@@ -38,7 +38,7 @@ curve nor a summary scalar substitutes for those records.
 ## Verification boundary
 
 Focused native, transport, filesystem, process and renderer contracts are
-listed in [the test inventory](../tests/README.md). They establish the named
+listed in [the test inventory](../../tests/README.md). They establish the named
 engineering paths, not scientific validity, every PyMDP capability, installed
 artifact behavior or the full GNN/release gate. Historical gate facts remain
 dated producer output until the canonical gate records new measurements.

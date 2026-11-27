@@ -11,7 +11,7 @@ The sections below preserve the dated 2026-11-02 snapshot, including its
 dependency version, counts and then-current interfaces. They are not current
 launch instructions or new acceptance claims. The native contract cutover,
 explicit registry, resource bounds and retired entry points are documented in
-[the current README](README.md), [tool reference](docs/mcp_tools.md) and
+[the current README](README.md), [tool reference](docs/reference/mcp_tools.md) and
 [Unreleased changelog](CHANGELOG.md#unreleased). Current gate measurements
 belong to [the generated facts](docs/_generated/gate-facts.md); focused parent
 proof does not regenerate them or qualify an installed image/release.

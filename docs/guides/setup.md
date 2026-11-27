@@ -19,9 +19,9 @@ this checkout's `src` when using source rather than an installed artifact.
 ## Quickstart
 
 The executable matching-grid example is in the
-[root quickstart](../README.md#quickstart-interface-directly).
+[root quickstart](../../README.md#quickstart-interface-directly).
 Do not pair an arbitrary model with an incompatible environment.
-The [tool reference](mcp_tools.md) defines model shapes, commit/reset semantics,
+The [tool reference](../reference/mcp_tools.md) defines model shapes, commit/reset semantics,
 measured results and unsupported operations.
 
 ## Bundled MCP
@@ -68,8 +68,8 @@ MCP, REST and direct instances share a contract, not state.
 
 ## Verification
 
-Use [the test inventory](../tests/README.md) for focused source contracts and
+Use [the test inventory](../../tests/README.md) for focused source contracts and
 [the run guide](RUN_GUIDE.md) for the canonical gate. Counts and timings belong
-to [generated gate facts](_generated/gate-facts.md), not current prose.
+to [generated gate facts](../_generated/gate-facts.md), not current prose.
 Historical facts are not refreshed by a focused test run.
 

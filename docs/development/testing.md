@@ -5,7 +5,7 @@ layer. It is the repository's declared gate and the one CI runs.
 
 ## Running the suite
 
-Use the gate, not remembered command lines (see the [Run Guide](RUN_GUIDE.md)):
+Use the gate, not remembered command lines (see the [Run Guide](../guides/RUN_GUIDE.md)):
 
 ```bash
 ./run.sh setup       # install the committed lock (Python 3.12) — once
@@ -18,7 +18,7 @@ Underneath, both arms are one pytest invocation over `tests/`; `test` adds
 
 ## Focused contracts and collection
 
-The [test inventory](../tests/README.md) lists the native lifecycle, model,
+The [test inventory](../../tests/README.md) lists the native lifecycle, model,
 environment, numerical, transport, renderer/output and owned-process modules.
 Use actual pytest collection/outcomes; counting source declarations does not
 measure executed parameter cases.
@@ -32,7 +32,7 @@ contracts are rerun; that is not a newly executed full gate.
 ## Generated facts
 
 Collected counts, per-file breakdowns and arm timings belong to
-[`_generated/gate-facts.md`](_generated/gate-facts.md), produced by
+[`_generated/gate-facts.md`](../_generated/gate-facts.md), produced by
 `scripts/gate_facts.py`. A focused source receipt does not refresh those
 historical producer records. Do not hand-edit generated metrics or infer a
 current lint/coverage/GNN pass from earlier results.
@@ -47,7 +47,7 @@ where applicable.
 Fixtures produce real JSON/images and bounded child processes in isolated
 temporary paths. The legacy category organizers, shared-output arrangement,
 inert test template and `src/main.py test` command were retired.
-See [verification details](../tests/DOCUMENTATION_TESTING.md).
+See [verification details](../../tests/DOCUMENTATION_TESTING.md).
 
 ## Adding tests
 
@@ -65,7 +65,7 @@ source-wording assertions as behavioral acceptance.
   `./run.sh docs` and `./run.sh test-full`.
 - **`gnn-conformance`** — display name `gnn conformance (pinned)`: the same
   toolchain action, then `./run.sh gnn`. See
-  [`../.github/GNN.md`](../.github/GNN.md).
+  [`../.github/GNN.md`](../../.github/GNN.md).
 
 GitHub Actions is billing-locked org-wide, so local runs are the only gate that
 executes today; `./run.sh all` is the local equivalent of both jobs.

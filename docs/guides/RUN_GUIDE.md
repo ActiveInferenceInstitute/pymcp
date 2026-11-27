@@ -33,13 +33,13 @@ files it is judging.
 marker, `slow`, applied to the eight tests that run a full PyMDP simulation or
 visualization pass. `pytest --durations` attributes most of the suite's call
 time to those eight; the collected and slow-marked counts are generated into
-[`_generated/gate-facts.md`](_generated/gate-facts.md). `test-full` runs them;
+[`_generated/gate-facts.md`](../_generated/gate-facts.md). `test-full` runs them;
 CI runs `test-full`.
 
 Generated counts and per-arm wall times live in
-[`_generated/gate-facts.md`](_generated/gate-facts.md), produced by
+[`_generated/gate-facts.md`](../_generated/gate-facts.md), produced by
 `scripts/gate_facts.py --record` — see
-[`_generated/README.md`](_generated/README.md).
+[`_generated/README.md`](../_generated/README.md).
 
 ## What CI runs
 
@@ -84,7 +84,7 @@ python -m gnn.importers check --repo . --require-pointer \
 ```
 
 It owns pin discovery and shape, the pin's declared repository/tag/revision, the
-[`.github/GNN.md`](../.github/GNN.md) pointer, and the syntax validation of every
+[`.github/GNN.md`](../../.github/GNN.md) pointer, and the syntax validation of every
 `*.gnn.md` specification with the pinned parser. This is the
 [GNN–FEP shared-reader contract](https://github.com/ActiveInferenceInstitute/Generalized_Notation_Notation/blob/main/docs/workflows/gnn-fep.md)
 member row: the call is made from the already-materialized pinned environment,

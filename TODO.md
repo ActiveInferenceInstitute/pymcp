@@ -29,12 +29,12 @@ an owner decision. No current lint, full gate or image pass is inferred here.
 
 - [x] ✓ **Dead external link.** `https://pymdp.readthedocs.io/` returns 404;
   the PyMDP docs moved to `https://pymdp-rtd.readthedocs.io/en/latest/`
-  (verified). Files: `docs/mcp_tools.md`, `docs/mcp_pymdp_integration.md`.
+  (verified). Files: `docs/reference/mcp_tools.md`, `docs/reference/mcp_pymdp_integration.md`.
   Commit `3ffa020`.
 - [x] ✓ **Project-layout path error.** `docs/README.md` placed `main.py`
   inside `src/mcp/`; it lives at `src/main.py` (sibling of `src/mcp/`).
   Commit `3ffa020`.
-- [x] ✓ **Architecture-diagram path error.** `docs/ARCHITECTURE.md` module
+- [x] ✓ **Architecture-diagram path error.** `docs/architecture/ARCHITECTURE.md` module
   diagram showed `main.py` under `src/mcp/`; corrected to `src/main.py`.
   Commit `3ffa020`.
 - [x] ✓ **Stale `__version__`.** `src/mcp/__init__.py` said `0.1.0` while the
@@ -65,14 +65,14 @@ an owner decision. No current lint, full gate or image pass is inferred here.
 
 ## Medium — completed this pass (2026-08-02)
 
-- [x] ✓ **`docs/pymdp_integration.md` rewrite.** Two stale claims removed:
+- [x] ✓ **`docs/reference/pymdp_integration.md` rewrite.** Two stale claims removed:
   (a) "PyMDP is intentionally **not** pinned as a dependency" — false,
   `inferactively-pymdp>=1.0.3` is declared and installed automatically;
   (b) legacy mutable-API example (`infer_states(observation)`,
   `infer_policies()`, `sample_action()`) replaced with the current
   immutable/batched call convention (`infer_states(obs, prior)`,
   `infer_policies(qs)`, `sample_action(q_pi)`). Commit `ed06406`.
-- [x] ✓ **`docs/implementation_details.md` snippets.** `create_agent` example
+- [x] ✓ **`docs/architecture/implementation_details.md` snippets.** `create_agent` example
   updated to construction-time configuration with batched matrices; the
   environment description now reflects JSON-serializable env dicts with inline
   stepping (`_step_gridworld`). Commit `199308d`.
@@ -134,7 +134,7 @@ an owner decision. No current lint, full gate or image pass is inferred here.
   legacy standalone REST server that predates them, and the README now says so
   instead of leaving the third server implicit. Files: `README.md`,
   `mcp_status_report.md`, `scripts/README.md` (already documented it),
-  `docs/README.md`, `docs/ARCHITECTURE.md`.
+  `docs/README.md`, `docs/architecture/ARCHITECTURE.md`.
 
 ## Minor — completed 2026-11-12
 
@@ -168,7 +168,7 @@ an owner decision. No current lint, full gate or image pass is inferred here.
   `gnn-conformance` job (`gnn conformance (pinned)`) runs `./run.sh gnn`. Both
   use the shared composite action
   `ActiveInferenceInstitute/.github/.github/actions/setup-python-uv@7159e67315330aac8e414aebae0ad1e999a41448`.
-  No secrets, no scanners. See [`docs/RUN_GUIDE.md`](docs/RUN_GUIDE.md).
+  No secrets, no scanners. See [`docs/guides/RUN_GUIDE.md`](docs/guides/RUN_GUIDE.md).
   Files: `.github/workflows/ci.yml`, `run.sh`. Commits `8fcd8bf` (CI),
   `3580827` (GNN), plus the 2026-11-12 gate pass.
 - [ ] **OPEN — Server consolidation (legacy MAJOR-4 part 2), revised after the
@@ -193,11 +193,11 @@ an owner decision. No current lint, full gate or image pass is inferred here.
   external blocker, but the cap values need a maintainer decision.
 - [ ] **OPEN — Current-state docs still quote the 2026-11-02 pin and count.**
   `mcp_status_report.md` (header and testing section) says pymdp 1.0.4 and
-  54 tests, and `docs/setup.md` calls testing "the 54-test suite"; the lock is
+  54 tests, and `docs/guides/setup.md` calls testing "the 54-test suite"; the lock is
   1.0.5 and `docs/_generated/gate-facts.md` records 74 tests. Update both pages
   to the generated count and pin, or date-stamp them as historical snapshots.
   Owner: Daniel Ari Friedman (maintainer). No external blocker.
-  Files: `mcp_status_report.md`, `docs/setup.md`.
+  Files: `mcp_status_report.md`, `docs/guides/setup.md`.
 - [x] ✓ **Lint debt retired (2026-11-12).** All 435 ruff findings fixed:
   307 W293 + 3 W291 (blank-line/trailing whitespace), 74 F401 (unused imports —
   one intentional side-effect import in `src/mcp/visualization/__init__.py` now
