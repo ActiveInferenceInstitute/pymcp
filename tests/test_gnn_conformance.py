@@ -37,7 +37,7 @@ SPEC = importlib.util.spec_from_file_location(
 gnn_conformance = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(gnn_conformance)
 
-REVISION = "75c834bd8519dc7b5adc4d24f16bf393cfd1ecdf"
+REVISION = "4a7cccce6d4d7cb483f00323ec5cdd79300f3464"
 
 
 class TestTypecheckVerdict(unittest.TestCase):
@@ -125,7 +125,7 @@ class TestBootstrapRevision(unittest.TestCase):
         self.assertEqual(gnn_conformance.pinned_revision(root), REVISION)
 
     def test_pin_without_a_revision_is_rejected(self):
-        for payload in ({}, {"tag": "v5.1.0"}, {"revision": ""}, {"revision": 5}):
+        for payload in ({}, {"tag": "v5.2.0"}, {"revision": ""}, {"revision": 5}):
             with self.subTest(payload=payload):
                 root = self._pin(payload)
                 with self.assertRaises(SystemExit) as raised:
