@@ -6,8 +6,8 @@
 
 It reads `.github/gnn-pin.json`, the canonical pin file (schema
 `gnn-importer-pin/v1`), which pins
-`ActiveInferenceInstitute/Generalized_Notation_Notation` at `v5.1.0`
-(`75c834bd8519dc7b5adc4d24f16bf393cfd1ecdf`, recorded 2026-11-12). The script
+`ActiveInferenceInstitute/Generalized_Notation_Notation` at `v5.2.0`
+(`4a7cccce6d4d7cb483f00323ec5cdd79300f3464`, recorded 2026-11-28). The script
 materializes that exact revision into an isolated `.gnn-venv/`, reused only when
 the installed parser's recorded git commit (`direct_url.json` →
 `vcs_info.commit_id`) equals the pin revision, so a same-version pin change
@@ -34,7 +34,7 @@ There is no second pin reader in this checkout, and no copy of
 The pin was `v5.0.3` at `8f293d9ba810e6eda5c09842d9c7ed9ffa5f92c1` until
 2026-11-12; that revision predates `src/gnn/importers.py` (added in `e6a9d3917`,
 first released in `v5.1.0`), which is why adoption was blocked rather than
-skipped. The pin now names `v5.1.0`, so the reader and the parser come from the
+skipped. The pin now names `v5.2.0`, so the reader and the parser come from the
 same revision.
 
 ## The type check

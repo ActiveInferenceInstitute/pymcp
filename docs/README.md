@@ -70,8 +70,8 @@ One entry point, no remembered command lines:
 ```
 
 Arms, the two CI jobs (`tests`, `gnn-conformance`), the canonical pin
-`.github/gnn-pin.json` (schema `gnn-importer-pin/v1`, `v5.1.0`,
-`75c834bd8519dc7b5adc4d24f16bf393cfd1ecdf`) and what the conformance job parses
+`.github/gnn-pin.json` (schema `gnn-importer-pin/v1`, `v5.2.0`,
+`4a7cccce6d4d7cb483f00323ec5cdd79300f3464`) and what the conformance job parses
 are documented in the [Run Guide](guides/RUN_GUIDE.md). Per-arm wall times and the
 collected test counts are generated into
 [`_generated/gate-facts.md`](_generated/gate-facts.md) by

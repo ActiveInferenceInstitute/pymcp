@@ -66,8 +66,8 @@ own `.gnn-venv/` (gitignored) for the parser.
 
 `./run.sh gnn` runs `scripts/gnn_conformance.py`. The canonical pin file
 `.github/gnn-pin.json` — schema `gnn-importer-pin/v1`, repository
-`ActiveInferenceInstitute/Generalized_Notation_Notation`, tag `v5.1.0`,
-revision `75c834bd8519dc7b5adc4d24f16bf393cfd1ecdf` (recorded 2026-11-12) —
+`ActiveInferenceInstitute/Generalized_Notation_Notation`, tag `v5.2.0`,
+revision `4a7cccce6d4d7cb483f00323ec5cdd79300f3464` (recorded 2026-11-28) —
 supplies the commit the script installs into `.gnn-venv/`. That single key is
 the environment bootstrap: every other question about the pin belongs to the
 shared reader, which cannot run until the pinned revision exists.

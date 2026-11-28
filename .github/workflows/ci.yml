@@ -53,8 +53,8 @@ jobs:
       - name: Full test suite
         run: ./run.sh test-full
 
-  # Pin: .github/gnn-pin.json (schema gnn-importer-pin/v1, v5.1.0,
-  # 75c834bd8519dc7b5adc4d24f16bf393cfd1ecdf). What the job parses:
+  # Pin: .github/gnn-pin.json (schema gnn-importer-pin/v1, v5.2.0,
+  # 4a7cccce6d4d7cb483f00323ec5cdd79300f3464). What the job parses:
   # .github/GNN.md. `./run.sh gnn` runs the shared `gnn.importers` reader inside
   # the materialized pinned environment, then type-checks the specs it
   # discovers; no pin shape is read in this repository.
