@@ -1,7 +1,7 @@
 # Implementation Details
 
 The [architecture](ARCHITECTURE.md) maps the modules; the
-[tool reference](mcp_tools.md) defines public arguments, lifecycle and
+[tool reference](../reference/mcp_tools.md) defines public arguments, lifecycle and
 measurement semantics. These are supported contracts, not descriptions of
 retired duplicate implementations.
 
@@ -55,7 +55,7 @@ headers only, not server authentication or automatic retries.
 The REST launcher is loopback/single-worker/no-reload. The example runner
 tracks its own PID and instance nonce, verifies readiness, enforces deadlines,
 preserves failed/not-run dispositions and reaps only its owned process.
-See [setup](setup.md) and [example commands](../scripts/README.md).
+See [setup](../guides/setup.md) and [example commands](../../scripts/README.md).
 
 ## Limits and qualification
 

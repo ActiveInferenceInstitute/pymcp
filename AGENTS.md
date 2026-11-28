@@ -19,7 +19,7 @@ An MCP server and FastAPI backend for PyMDP active-inference agents — expose t
 | `src/main.py` | MCP server entry point (FastMCP over SSE / stdio). |
 | `src/mcp/` | Core package: `utils.py` (`PyMDPInterface`), servers, clients, environments, visualization. See [`src/README.md`](src/README.md). |
 | `tests/` | pytest suite; counts and the `slow` split are generated into [`docs/_generated/gate-facts.md`](docs/_generated/gate-facts.md). See [`tests/README.md`](tests/README.md). |
-| `run.sh` | The gate: one arm per command, and the exact commands CI runs. See [`docs/RUN_GUIDE.md`](docs/RUN_GUIDE.md). |
+| `run.sh` | The gate: one arm per command, and the exact commands CI runs. See [`docs/guides/RUN_GUIDE.md`](docs/guides/RUN_GUIDE.md). |
 | `scripts/` | Repo tooling (`run.sh` helpers, doc checks), examples, legacy runners. See [`scripts/README.md`](scripts/README.md). |
 | `docs/` | Documentation tree; hub at [`docs/README.md`](docs/README.md), flat index at [`docs/documentation-index.md`](docs/documentation-index.md). |
 | `.aii/` | InstituteOS sidecar metadata. |
@@ -38,7 +38,7 @@ An MCP server and FastAPI backend for PyMDP active-inference agents — expose t
 
 Install the environment first with `./run.sh setup`
 (`uv sync --frozen --python 3.12`). Arms, CI job keys and the pinned GNN
-conformance check are documented in [`docs/RUN_GUIDE.md`](docs/RUN_GUIDE.md);
+conformance check are documented in [`docs/guides/RUN_GUIDE.md`](docs/guides/RUN_GUIDE.md);
 measured test counts and per-arm wall times are generated into
 [`docs/_generated/gate-facts.md`](docs/_generated/gate-facts.md) by
 `scripts/gate_facts.py`. `ruff` is configured with `fix = true`, so the `lint`

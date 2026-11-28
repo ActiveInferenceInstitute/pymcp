@@ -46,7 +46,7 @@ models, lifecycle, real transports/processes and renderer/output contracts.
   they are not measured memory or latency guarantees.
 - Full gate, installed-artifact/image and GNN/release proof remain separate.
   The existing pinned GNN verdict/shared-reader repairs are retained; see
-  [the run guide](docs/RUN_GUIDE.md) and [backlog](TODO.md).
+  [the run guide](docs/guides/RUN_GUIDE.md) and [backlog](TODO.md).
 
 See [`docs/`](docs/README.md) for setup, testing, architecture and the tool
 reference.
@@ -117,7 +117,7 @@ install the official `mcp` package over this bundled namespace.
 For an existing prepared environment, launch its interpreter directly with
 this checkout's `src` selected. Docker provisions uv 0.13.8 and a frozen,
 no-dev/non-editable environment; source tests do not qualify the image.
-See [setup](docs/setup.md) for exact launch and exposure boundaries.
+See [setup](docs/guides/setup.md) for exact launch and exposure boundaries.
 
 ---
 
@@ -225,7 +225,7 @@ Toolkit downloads are caller-owned local files, not returned server paths.
 Instances share a contract, not state. Non-loopback exposure is an explicit
 owner decision; no server authentication exists and CORS is not authentication.
 Client `auth.enabled` controls token headers only. Configuration and bounded
-output/protocol policy are in [setup](docs/setup.md); owned process examples
+output/protocol policy are in [setup](docs/guides/setup.md); owned process examples
 are in [scripts/README.md](scripts/README.md).
 
 ---
@@ -240,7 +240,7 @@ are in [scripts/README.md](scripts/README.md).
 
 `./run.sh` is the single gate entry point; both CI jobs call its arms, so there
 is no second copy of a test or lint command anywhere. See the
-[Run Guide](docs/RUN_GUIDE.md) for the arm list and
+[Run Guide](docs/guides/RUN_GUIDE.md) for the arm list and
 [`docs/_generated/gate-facts.md`](docs/_generated/gate-facts.md) for the
 generated test counts and per-arm wall times.
 
@@ -251,24 +251,26 @@ qualification. Counts come from `scripts/gate_facts.py`, not from prose.
 
 > The suite needs the resolved environment; on a bare interpreter without the
 > declared dependencies `pytest` cannot import the modules and collection fails.
-> See [Testing](docs/testing.md).
+> See [Testing](docs/development/testing.md).
 
 ---
 
 ## Documentation
 
+[Manuscript source and rendering](docs/manuscript/README.md).
+
 - [Docs index](docs/README.md)
 - [Documentation index (flat list)](docs/documentation-index.md)
-- [Run guide — the `./run.sh` gate](docs/RUN_GUIDE.md)
+- [Run guide — the `./run.sh` gate](docs/guides/RUN_GUIDE.md)
 - [Generated gate facts](docs/_generated/gate-facts.md)
-- [Setup and usage](docs/setup.md)
-- [Testing](docs/testing.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [MCP & PyMDP integration](docs/mcp_pymdp_integration.md)
-- [MCP tools reference](docs/mcp_tools.md)
-- [PyMDP integration](docs/pymdp_integration.md)
-- [Implementation details](docs/implementation_details.md)
-- [Advanced features](docs/advanced_features.md)
+- [Setup and usage](docs/guides/setup.md)
+- [Testing](docs/development/testing.md)
+- [Architecture](docs/architecture/ARCHITECTURE.md)
+- [MCP & PyMDP integration](docs/reference/mcp_pymdp_integration.md)
+- [MCP tools reference](docs/reference/mcp_tools.md)
+- [PyMDP integration](docs/reference/pymdp_integration.md)
+- [Implementation details](docs/architecture/implementation_details.md)
+- [Advanced features](docs/guides/advanced_features.md)
 - [Implementation status report](mcp_status_report.md)
 - [Changelog](CHANGELOG.md)
 

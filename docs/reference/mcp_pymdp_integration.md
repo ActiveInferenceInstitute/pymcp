@@ -45,7 +45,7 @@ The integration has four layers:
 The [tool reference](mcp_tools.md) owns the complete registry, model interchange,
 observation → inference → selection → successful transition/commit lifecycle,
 reset policies, measured VFE/EFE conventions and bounded retention contract.
-The [setup guide](setup.md) distinguishes bundled MCP, REST and explicit
+The [setup guide](../guides/setup.md) distinguishes bundled MCP, REST and explicit
 in-process clients. Instances share a contract, not cross-process state.
 
 See [mcp_tools.md](mcp_tools.md) for the full reference.

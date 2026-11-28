@@ -1,7 +1,7 @@
 # MCP Tools Reference
 
 MCP, REST and `DirectMCPClient` dispatch through the explicit
-[`TOOL_NAMES` registry](../src/mcp/api.py). Discovery returns strict native
+[`TOOL_NAMES` registry](../../src/mcp/api.py). Discovery returns strict native
 JSON argument schemas. Unknown tools, extra fields and invalid types are
 rejected; arbitrary public attributes are not remotely callable. Separate
 server/client instances share this contract, not mutable state.
@@ -24,7 +24,7 @@ applied to invalid input. Admission and exported copies do not mutate the
 caller's arrays. `get_agent(agent_id)` returns the complete unbatched model,
 settings and dimension metadata, including singleton dimensions.
 
-Settings are admitted at construction by [`models.py`](../src/mcp/models.py).
+Settings are admitted at construction by [`models.py`](../../src/mcp/models.py).
 Filtering supports `fpi` and single-factor `exact`; unsupported smoothing,
 algorithms and per-call method/horizon changes fail rather than being ignored.
 Passing learning configuration or concentrations does not expose a learning
@@ -132,5 +132,5 @@ MCP uses JSON-RPC initialization followed by `notifications/initialized`,
 Stdio stdout contains protocol frames only. SSE opens a bodyless `/sse`
 channel and posts to its `/messages?session_id=...` endpoint; responses are
 delivered once on that channel. Disconnect releases its budget even when
-the consumer blocks an ASGI send. See [setup](setup.md) for launch boundaries.
+the consumer blocks an ASGI send. See [setup](../guides/setup.md) for launch boundaries.
 

@@ -48,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `scripts/gate_facts.py` — records per-arm wall times and collected test counts
   into `docs/_generated/arms.json` and renders
   `docs/_generated/gate-facts.md`; `--check` is part of the `docs` arm.
-- Documentation: `docs/RUN_GUIDE.md` (arms, CI jobs, pin facts),
+- Documentation: `docs/guides/RUN_GUIDE.md` (arms, CI jobs, pin facts),
   `docs/documentation-index.md` (flat index), `docs/_generated/README.md`.
 
 ### Changed
@@ -132,7 +132,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `step_environment` returns a tracked `position` for grid-world environments.
 - Learning configuration (`learn_A`, `learn_B`, `pA`, `pB`, …) is now honored at
   agent construction.
-- New docs: `docs/ARCHITECTURE.md`; visual/Mermaid diagrams in the README and
+- New docs: `docs/architecture/ARCHITECTURE.md`; visual/Mermaid diagrams in the README and
   docs.
 
 ### Changed
